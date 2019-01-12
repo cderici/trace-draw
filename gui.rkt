@@ -3,7 +3,8 @@
 (require racket/gui/base
          racket/class
          "draw.rkt"
-         "struct.rkt")
+         "struct.rkt"
+         "config.rkt")
 
 (provide make-gui)
 (define (->int n) (ceiling (inexact->exact n)))
@@ -14,7 +15,7 @@
   (define pin? #f)
   (define hover null)
   (define hilites (hash))
-  
+
   (define-values (screen-w screen-h) (get-display-size))
 
   (define f (new frame%
@@ -25,7 +26,7 @@
   (define panel (new vertical-panel%
                      [parent f]
                      [alignment '(left center)]))
-  
+
   (define refresh-offscreen? #t)
   (define offscreen #f)
   (define offscreen-dc #f)
@@ -33,7 +34,41 @@
 
   (define total-w (* 2 (- screen-w 400)))
   (define total-h (* 2 (- screen-h 400)))
-  
+
+  (define display-bounds-ht ; display locations for traces and bridges
+    (let* ([y-init 50]
+           [x-entry 100]
+           [x-trace (+ x-entry t-width X-GAP)]
+           [x-bridge (+ x-trace t-width X-GAP)])
+      (define-values (new-ht y-entry-next y-trace-next)
+        (for/fold ([ht (hash)]
+                   [y-entry y-init]
+                   [y-trace y-init])
+                  ([t (in-list traces)])
+          (if (trace-is-entry? t)
+              (values
+               (hash-set ht t (make-display-bound
+                               x-entry y-entry
+                               t-width t-height))
+               (+ y-entry t-height Y-GAP)
+               y-trace)
+              (values
+               (hash-set ht t (make-display-bound
+                               x-trace y-trace
+                               t-width t-height))
+               y-entry
+               (+ y-trace t-height Y-GAP)))))
+      (define-values (final-ht y-bridge-next)
+        (for/fold ([ht new-ht]
+                   [y-bridge y-init])
+                  ([b (in-list bridges)])
+          (values
+           (hash-set ht b (make-display-bound
+                           x-bridge y-bridge
+                           b-width b-height))
+           (+ y-bridge b-height Y-GAP))))
+      final-ht))
+
   (define c (new (class canvas%
                    (super-new)
                    (inherit refresh
@@ -100,10 +135,10 @@
                      (set! prev-mouse-y -1))
                    (define/override (on-event e)
                      (define-values (dx dy) (get-view-start))
-                     
+
                      (define mouse-x (send e get-x)) ; relative to the visible area
                      (define mouse-y (send e get-y))
-                     
+
                      (when (and (send e dragging?)
                                 (send e get-left-down))
                        (when (or (> (abs (- mouse-x prev-mouse-x)) 20)
@@ -156,7 +191,7 @@
                                      (define dc offscreen-dc)
                                      (send dc clear)
                                      (send dc set-smoothing 'smoothed)
-                                     
+
                                      (draw dc))
                                    (send c-dc draw-bitmap offscreen 0 0))]))
 
@@ -164,6 +199,7 @@
     (draw-all dc
               #:traces traces
               #:bridges bridges
+              #:display-bounds-ht display-bounds-ht
               #:view-scale view-scale)
     #;(draw-graph dc
                 #:pkgs pkgs
@@ -172,7 +208,7 @@
                 #:at-depth at-depth
                 #:reps reps
                 #:no-build-reps no-build-reps
-                #:total-w total-w 
+                #:total-w total-w
                 #:total-h total-h
                 #:view-scale view-scale
                 #:invert? (send invert-checkbox get-value)
@@ -198,7 +234,7 @@
                         (length (filter (lambda (t) (trace-is-entry? t)) traces))
                         (length bridges))]
          ))
-  
+
   #;(define build-deps-checkbox
     (new check-box%
          [parent hpanel]

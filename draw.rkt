@@ -30,13 +30,16 @@
   (send dc draw-ellipse
         (- to-x 5) (- to-y 5) 10 10))
 
-(define (draw-trace dc t current-x current-y)
-
+(define (draw-trace dc t bounds)
   (send dc set-brush tracebox-brush)
+  (define current-x (display-bound-x bounds))
+  (define current-y (display-bound-y bounds))
   (send dc draw-rounded-rectangle
-        current-x current-y
-        t-width t-height)
-  
+        current-x
+        current-y
+        (display-bound-w bounds)
+        (display-bound-h bounds))
+
   #;(define-values (w h d a) (send dc get-text-extent s trace-title-font #t))
   (send dc draw-text (trace-label t) (+ current-x TGAP) (+ current-y TGAP) #t)
 
@@ -51,26 +54,48 @@
     )
   )
 
-(define (draw-bridge dc b current-x current-y)
+(define (draw-bridge dc b bounds)
+  (define current-x (display-bound-x bounds))
+  (define current-y (display-bound-y bounds))
+
   (send dc set-brush bridgebox-brush)
   (send dc draw-rounded-rectangle
         current-x current-y
-        b-width b-height)
+        (display-bound-w bounds)
+        (display-bound-h bounds))
 
   (send dc draw-text "bridge for" (+ current-x TGAP) (+ current-y TGAP) #t)
   (send dc draw-text (bridge-guard-id b) (+ current-x TGAP) (+ current-y TGAP TGAP) #t))
-  
 
 ;;;; MAIN DRAW
 
 (define (draw-all dc
                   #:traces traces
                   #:bridges bridges
+                  #:display-bounds-ht display-bounds-ht
                   #:view-scale view-scale)
   (send dc set-font font)
   (send dc set-text-foreground "black")
   (send dc set-smoothing 'aligned)
   (send dc set-scale view-scale view-scale)
+
+  (for ([(t-b bounds) (in-hash display-bounds-ht)])
+    (if (trace? t-b)
+        (draw-trace dc t-b bounds)
+        (draw-bridge dc t-b bounds)))
+
+  #;(for/fold ([y-entry 50][y-trace 50]) ([t (in-list traces)])
+    (if (trace-is-entry? t)
+        (begin
+          (draw-trace dc t x-entry y-entry)
+          (values (+ y-entry t-height Y-GAP) y-trace))
+        (begin
+          (draw-trace dc t x-trace y-trace)
+          (values y-entry (+ y-trace t-height Y-GAP)))))
+
+  #;(for/fold ([y 50]) ([b (in-list bridges)])
+    (draw-bridge dc b x-bridge y)
+    (+ y b-height Y-GAP))
 
   (define t1-x 50)
   (define t1-y 50)
@@ -93,22 +118,5 @@
     (trace-middle-left t2-x t2-y))
 
   (draw-arrow dc from-x from-y to-x to-y)
-
-  (define x-entry 100)
-  (define x-trace (+ x-entry t-width X-GAP))
-  
-  (for/fold ([y-entry 50][y-trace 50]) ([t (in-list traces)])
-    (if (trace-is-entry? t)
-        (begin
-          (draw-trace dc t x-entry y-entry)
-          (values (+ y-entry t-height Y-GAP) y-trace))
-        (begin
-          (draw-trace dc t x-trace y-trace)
-          (values y-entry (+ y-trace t-height Y-GAP)))))
-
-  (define x-bridge (+ x-trace t-width X-GAP))
-  (for/fold ([y 50]) ([b (in-list bridges)])
-    (draw-bridge dc b x-bridge y)
-    (+ y b-height Y-GAP))
 
   )

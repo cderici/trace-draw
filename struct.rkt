@@ -21,3 +21,5 @@
                        use-count
                        jump-target
                        text))
+
+(define-struct display-bound (x y w h))
