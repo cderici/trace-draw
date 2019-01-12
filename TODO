@@ -1,0 +1,8 @@
+
+- DONE show all the traces (with inner loops)
+- DONE show all the bridges
+- connect who jumps to where with lines/curves
+- get the use counts of traces and draw them ordered
+
+- make all the traces and bridges be found by mouse position
+- click on a trace to open a window with all the trace codes
