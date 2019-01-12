@@ -1,0 +1,41 @@
+#lang racket/base
+(require racket/draw)
+
+(provide (all-defined-out))
+
+(define FONT-SIZE 10)
+(define SPACE-SIZE 10)
+(define SEP-SIZE FONT-SIZE)
+(define MARGIN FONT-SIZE)
+
+(define t-width 100) ; trace width
+(define t-height 200); trace height
+
+(define b-width t-width)
+(define b-height (/ t-height 2))
+
+(define SPLINE-SHIFT 50)
+(define GAP 10)
+(define TGAP (* 2 GAP))
+(define X-GAP (* 3 t-width))
+(define Y-GAP (* 2 GAP))
+
+(define face "Helvetica")
+(define trace-title-font
+  (make-font #:face face #:size FONT-SIZE #:weight 'bold #:size-in-pixels? #t))
+
+(define font (make-font #:face face #:size FONT-SIZE #:size-in-pixels? #t))
+
+(define tracebox-color (make-color 150 0 100 0.3))
+(define tracebox-brush
+  (make-brush #:color tracebox-color #:style 'solid))
+(define trace-innerbox-brush
+  (make-brush #:color (make-color 100 0 50 0.3) #:style 'solid))
+
+(define bridgebox-brush
+  (make-brush #:color (make-color 0 100 100 0.3) #:style 'solid))
+   
+(define jump-color "blue")
+
+(define trace-pen-width 2)
+(define pen-width 1)
