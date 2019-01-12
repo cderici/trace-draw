@@ -5,3 +5,5 @@ Use it from the command line:
 > racket trace-draw.rkt <trace-log-file>
 
 You can use the given `demo.trace` file to see how it works.
+
+Created by modifying [mflatt](https://github.com/mflatt)'s [pkg-dep-draw](https://github.com/mflatt/pkg-dep-draw).
