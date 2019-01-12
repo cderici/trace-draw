@@ -96,6 +96,7 @@
   (if is-entry-bridge?
       (make-trace (get-entry-bridge-id)
                   outer-label-line
+                  #t
                   #f
                   racket-code
                   -1
@@ -108,12 +109,14 @@
                                          inner-label-line
                                          #f
                                          #f
+                                         #f
                                          -1
                                          ordered-inner-guards
                                          jump
                                          (string-join ordered-inner-code "\n")))])
         (make-trace outer-label
                     outer-label-line
+                    #f
                     maybe-inner
                     racket-code
                     -1

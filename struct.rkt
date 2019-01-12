@@ -4,6 +4,7 @@
 
 (define-struct trace (label         ; number
                       id-line       ; string line containing the label
+                      is-entry?     ; boolean
                       inner-loop    ; #f or inner trace
                       code          ; racket code at the first merge point (string)
                       use-count     ; -1 for unknown

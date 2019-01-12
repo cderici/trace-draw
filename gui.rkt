@@ -193,9 +193,9 @@
   (define infobox
     (new message%
          [parent hpanel]
-         [label (format "~a traces\n...with ~a inner loops\n~a bridges\n"
+         [label (format "~a traces\n...with ~a entry bridges\n~a bridges\n"
                         (length traces)
-                        (length (filter (lambda (t) (trace-inner-loop t)) traces))
+                        (length (filter (lambda (t) (trace-is-entry? t)) traces))
                         (length bridges))]
          ))
   
