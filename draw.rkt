@@ -94,14 +94,21 @@
 
   (draw-arrow dc from-x from-y to-x to-y)
 
-  (define x 100)
-  (for/fold ([y 50]) ([t (in-list traces)])
-    (draw-trace dc t x y)
-    (+ y t-height Y-GAP))
+  (define x-entry 100)
+  (define x-trace (+ x-entry t-width X-GAP))
+  
+  (for/fold ([y-entry 50][y-trace 50]) ([t (in-list traces)])
+    (if (trace-is-entry? t)
+        (begin
+          (draw-trace dc t x-entry y-entry)
+          (values (+ y-entry t-height Y-GAP) y-trace))
+        (begin
+          (draw-trace dc t x-trace y-trace)
+          (values y-entry (+ y-trace t-height Y-GAP)))))
 
-  (define new-x (+ x t-width X-GAP))
-  (for/fold ([new-y 50]) ([b (in-list bridges)])
-    (draw-bridge dc b new-x new-y)
-    (+ new-y b-height Y-GAP))
+  (define x-bridge (+ x-trace t-width X-GAP))
+  (for/fold ([y 50]) ([b (in-list bridges)])
+    (draw-bridge dc b x-bridge y)
+    (+ y b-height Y-GAP))
 
   )
