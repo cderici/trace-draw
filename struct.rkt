@@ -15,7 +15,7 @@
 
 (define-struct guard (id line))
 
-(define-struct bridge (guard-id
+(define-struct bridge (guard-id ; string
                        id-line
                        guards
                        use-count

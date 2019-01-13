@@ -6,3 +6,5 @@
 
 - make all the traces and bridges be found by mouse position
 - click on a trace to open a window with all the trace codes
+
+- separate the traces and bridge-guard-ids in hilites

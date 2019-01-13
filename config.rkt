@@ -32,8 +32,14 @@
 (define trace-innerbox-brush
   (make-brush #:color (make-color 100 0 50 0.3) #:style 'solid))
 
+(define tracebox-highlight-brush
+  (make-brush #:color (make-color 0 0 100 0.3) #:style 'solid))
+
 (define bridgebox-brush
   (make-brush #:color (make-color 0 100 100 0.3) #:style 'solid))
+
+(define bridgebox-highlight-brush
+  (make-brush #:color (make-color 0 0 100 0.3) #:style 'solid))
    
 (define jump-color "blue")
 

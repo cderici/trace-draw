@@ -30,8 +30,16 @@
   (send dc draw-ellipse
         (- to-x 5) (- to-y 5) 10 10))
 
-(define (draw-trace dc t bounds)
-  (send dc set-brush tracebox-brush)
+(define (draw-trace dc t bounds hilites)
+  (define hilite? (for/or ([h (in-list hilites)])
+                    (or (equal? h (trace-label t))
+                        (and (trace-inner-loop t)
+                             (equal? h
+                                     (trace-label
+                                      (trace-inner-loop t)))))))
+  (if hilite?
+      (send dc set-brush tracebox-highlight-brush)
+      (send dc set-brush tracebox-brush))
   (define current-x (display-bound-x bounds))
   (define current-y (display-bound-y bounds))
   (send dc draw-rounded-rectangle
@@ -54,11 +62,17 @@
     )
   )
 
-(define (draw-bridge dc b bounds)
+(define (draw-bridge dc b bounds hilites)
+  (define hilite? (for/or ([h (in-list hilites)])
+                    (equal? (bridge-guard-id b) h)))
+  
   (define current-x (display-bound-x bounds))
   (define current-y (display-bound-y bounds))
 
-  (send dc set-brush bridgebox-brush)
+  (if hilite?
+      (send dc set-brush bridgebox-highlight-brush)
+      (send dc set-brush bridgebox-brush))
+  
   (send dc draw-rounded-rectangle
         current-x current-y
         (display-bound-w bounds)
@@ -73,7 +87,8 @@
                   #:traces traces
                   #:bridges bridges
                   #:display-bounds-ht display-bounds-ht
-                  #:view-scale view-scale)
+                  #:view-scale view-scale
+                  #:hilites hilites)
   (send dc set-font font)
   (send dc set-text-foreground "black")
   (send dc set-smoothing 'aligned)
@@ -81,8 +96,8 @@
 
   (for ([(t-b bounds) (in-hash display-bounds-ht)])
     (if (trace? t-b)
-        (draw-trace dc t-b bounds)
-        (draw-bridge dc t-b bounds)))
+        (draw-trace dc t-b bounds hilites)
+        (draw-bridge dc t-b bounds hilites)))
 
   #;(for/fold ([y-entry 50][y-trace 50]) ([t (in-list traces)])
     (if (trace-is-entry? t)

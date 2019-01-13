@@ -4,7 +4,8 @@
          racket/class
          "draw.rkt"
          "struct.rkt"
-         "config.rkt")
+         "config.rkt"
+         "jump-deps.rkt")
 
 (provide make-gui)
 (define (->int n) (ceiling (inexact->exact n)))
@@ -12,9 +13,9 @@
 (define (make-gui #:traces traces
                   #:bridges bridges)
 
-  (define pin? #f)
-  (define hover null)
-  (define hilites (hash))
+  (define pinned-trace #f)
+  (define hover #f)
+  (define hilites null)
 
   (define-values (screen-w screen-h) (get-display-size))
 
@@ -68,6 +69,13 @@
                            b-width b-height))
            (+ y-bridge b-height Y-GAP))))
       final-ht))
+
+  ;; trace-jumps : mapping from traces/bridges to trace labels
+  ;; guard-exits : mapping from traces to (listof bridge-guard-ids)
+  (define-values (trace-jumps guard-exits)
+    (compute-jumps traces bridges))
+
+  (printf "trace-jumps : ~a\nguard-exits : ~a\n" trace-jumps guard-exits)
 
   (define c (new (class canvas%
                    (super-new)
@@ -150,31 +158,31 @@
                        (set! prev-mouse-x mouse-x)
                        (set! prev-mouse-y mouse-y))
 
-                     #;(define hit-pkgs
-                       (if (and pin?
-                                (not (send e button-down?)))
-                           hover
-                           (for/or ([(pkg bounds) (in-hash pkg-bounds)])
-                             (and (x . >= . (car bounds))
-                                  (y . >= . (cadr bounds))
-                                  (x . <= . (+ (car bounds) (caddr bounds)))
-                                  (y . <= . (+ (cadr bounds) (cadddr bounds)))
-                                  (list pkg)))))
-                     #;(when (send e button-down?)
-                       (set! pin? (and hit-pkgs #t)))
-                     #;(unless (equal? hover hit-pkgs)
-                       (set! hover hit-pkgs)
+                     (define hover-trace
+                       (for/or ([(t-b bounds) (in-hash display-bounds-ht)])
+                         (let* ([x-left (display-bound-x bounds)]
+                                [y-top (display-bound-y bounds)]
+                                [x-right (+ x-left (display-bound-w bounds))]
+                                [y-bottom (+ y-top (display-bound-h bounds))])
+                           (and (mouse-x . >= . x-left)
+                                (mouse-y . >= . y-top)
+                                (mouse-x . <= . x-right)
+                                (mouse-y . <= . y-bottom)
+                                t-b))))
+                     (when (and hover-trace
+                                (send e button-down?)
+                                (not (equal? pinned-trace hover-trace)))
+                       (set! pinned-trace hover-trace))
+                     (unless (equal? hover hover-trace)
+                       (set! hover hover-trace)
                        (reset-hilites)))
                    (define/public (reset-hilites)
-                     (define hit-pkgs hover)
-                     (set! hilites (hash))
-                     #;(when hit-pkgs
-                       #;(define all-deps? (send build-deps-checkbox get-value))
-                       #;(define invert? (send invert-checkbox get-value))
-                       #;(set! hilites (compute-closure (if invert? invert-pkgs pkgs)
-                                                      hit-pkgs
-                                                      all-deps?))
-                       1)
+                     (define hover-trace hover)
+                     (set! hilites null)
+                     (when hover-trace
+                       (set! hilites (get-jump-deps hover-trace
+                                                    trace-jumps
+                                                    guard-exits)))
                      (set! refresh-offscreen? #t)
                      (low-priority-refresh)))
                  [parent panel]
@@ -200,7 +208,8 @@
               #:traces traces
               #:bridges bridges
               #:display-bounds-ht display-bounds-ht
-              #:view-scale view-scale)
+              #:view-scale view-scale
+              #:hilites hilites)
     #;(draw-graph dc
                 #:pkgs pkgs
                 #:invert-pkgs invert-pkgs
