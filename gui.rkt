@@ -70,12 +70,18 @@
            (+ y-bridge b-height Y-GAP))))
       final-ht))
 
+  ;; same hash table with keys as labels instead of objects
+  (define labeled-bounds-ht
+    (for/hash ([(t-b b) (in-hash display-bounds-ht)])
+      (if (trace? t-b)
+          (values (trace-label t-b) b)
+          (values (bridge-guard-id t-b) b))))
+
   ;; trace-jumps : mapping from traces/bridges to trace labels
   ;; guard-exits : mapping from traces to (listof bridge-guard-ids)
-  (define-values (trace-jumps guard-exits)
+  ;; inner-loop-of : mapping from trace label to trace label (which is inner of which)
+  (define-values (trace-jumps guard-exits inner-loop-of)
     (compute-jumps traces bridges))
-
-  (printf "trace-jumps : ~a\nguard-exits : ~a\n" trace-jumps guard-exits)
 
   (define c (new (class canvas%
                    (super-new)
@@ -207,9 +213,13 @@
     (draw-all dc
               #:traces traces
               #:bridges bridges
+              #:inner-loop-of inner-loop-of
+              #:labeled-bounds-ht labeled-bounds-ht
               #:display-bounds-ht display-bounds-ht
               #:view-scale view-scale
-              #:hilites hilites)
+              #:hilites hilites
+              #:trace-jumps trace-jumps
+              #:guard-exits guard-exits)
     #;(draw-graph dc
                 #:pkgs pkgs
                 #:invert-pkgs invert-pkgs
