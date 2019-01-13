@@ -26,6 +26,11 @@
 
 (define font (make-font #:face face #:size FONT-SIZE #:size-in-pixels? #t))
 
+;; Pens
+(define box-pen (make-pen #:color "black" #:width 1 #:style 'solid))
+(define line-pen (make-pen #:color "black" #:width 1 #:style 'short-dash))
+(define hilite-pen (make-pen #:color "blue" #:width 2 #:style 'solid))
+
 (define tracebox-color (make-color 150 0 100 0.3))
 (define tracebox-brush
   (make-brush #:color tracebox-color #:style 'solid))

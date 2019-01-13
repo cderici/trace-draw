@@ -9,7 +9,9 @@
 (provide draw-all)
 
 (define (connect dc source-bounds self? is-target-inner? target-bounds
-                 [right-to-left? #f])
+                 [right-to-left? #f][hilite? #f])
+  (send dc set-pen (if hilite? hilite-pen line-pen))
+
   (let ([source-x (display-bound-x source-bounds)]
         [source-y (display-bound-y source-bounds)]
         [source-w (display-bound-w source-bounds)]
@@ -55,6 +57,7 @@
                       (make-object point% (+ end-x 4) (+ end-y 5))))))))
 
 (define (draw-trace dc t bounds hilites)
+  (send dc set-pen box-pen)
   (define label (trace-label t))
   (define hilite? (for/or ([h (in-list hilites)])
                     (or (equal? h label)
@@ -90,6 +93,7 @@
   )
 
 (define (draw-bridge dc b bounds hilites)
+  (send dc set-pen box-pen)
   (define hilite? (for/or ([h (in-list hilites)])
                     (equal? (bridge-guard-id b) h)))
 
@@ -108,12 +112,17 @@
   (send dc draw-text "bridge for" (+ current-x TGAP) (+ current-y TGAP) #t)
   (send dc draw-text (bridge-guard-id b) (+ current-x TGAP) (+ current-y TGAP TGAP) #t))
 
-(define (draw-connections dc trace-jumps bridges guard-exits inner-loop-of labeled-bounds-ht)
+(define (draw-connections dc trace-jumps bridges guard-exits inner-loop-of labeled-bounds-ht hilites)
 
   (define (get-display-bound label)
     (or (hash-ref labeled-bounds-ht label #f)
         (hash-ref labeled-bounds-ht
                   (hash-ref inner-loop-of label))))
+
+  (define (is-hilite? . labels)
+    (for/or ([l (in-list labels)])
+      (for/or ([h (in-list hilites)])
+        (equal? h l))))
 
   ;; Draw trace to trace jumps
   (for ([(t target-label) (in-hash trace-jumps)])
@@ -124,20 +133,24 @@
              self-display-bounds
              (equal? self-display-bounds target-display-bounds)
              (hash-has-key? inner-loop-of target-label)
-             target-display-bounds))
+             target-display-bounds
+             #f (is-hilite? (trace-label t) target-label)))
 
   ;; Draw trace to bridge jumps (guard exits)
   (for ([(t-b bridges) (in-hash guard-exits)])
     (unless (null? bridges)
       (for ([b (in-list bridges)])
+        (define t-b-label (if (trace? t-b)
+                              (trace-label t-b)
+                              (bridge-guard-id t-b)))
         ;; connect t with b
         (define self-display-bounds (get-display-bound
-                                     (if (trace? t-b)
-                                         (trace-label t-b)
-                                         (bridge-guard-id t-b))))
+                                     t-b-label))
         (define bridge-display-bounds (get-display-bound b))
 
-        (connect dc self-display-bounds (bridge? t-b) #f bridge-display-bounds))))
+        (connect dc self-display-bounds (bridge? t-b)
+                 #f bridge-display-bounds
+                 #f (is-hilite? t-b-label b)))))
 
   ;; Draw bridge to trace jumps
   (for ([b (in-list bridges)])
@@ -149,7 +162,8 @@
              #f
              (hash-has-key? inner-loop-of target-bounds)
              target-bounds
-             #t))
+             #t
+             (is-hilite? (bridge-guard-id b) (bridge-jump-target b))))
   )
 
 ;;;; MAIN DRAW
@@ -174,6 +188,6 @@
         (draw-trace dc t-b bounds hilites)
         (draw-bridge dc t-b bounds hilites)))
 
-  (draw-connections dc trace-jumps bridges  guard-exits inner-loop-of labeled-bounds-ht)
+  (draw-connections dc trace-jumps bridges  guard-exits inner-loop-of labeled-bounds-ht hilites)
 
   )
