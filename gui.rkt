@@ -180,7 +180,8 @@
                      (when (and hover-trace
                                 (send e button-down?)
                                 (not (equal? pinned-trace hover-trace)))
-                       (set! pinned-trace hover-trace))
+                       (set! pinned-trace hover-trace)
+                       (send trace-info-canvas refresh))
                      (unless (equal? hover hover-trace)
                        (set! hover hover-trace)
                        (reset-hilites)))
@@ -254,7 +255,7 @@
                       [parent panel]
                       [alignment '(left top)]
                       [stretchable-width #f]
-                      [min-width 400]
+                      [min-width 500]
                       [callback (lambda (b e)
                                   (if
                                    (= (send b get-selection) 0)
