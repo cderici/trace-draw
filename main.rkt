@@ -5,6 +5,8 @@
          racket/string
          "private/struct.rkt")
 
+(provide trace-draw)
+
 (define-runtime-module-path gui "private/gui.rkt")
 
 (define entry-bridge-count 0)
@@ -162,80 +164,68 @@
   (make-bridge guard-id id-line ordered-guards -1 jump (string-join ordered-code "\n"))
   )
 
-
-#;(current-command-line-arguments
- #("old-ack.trace"))
-
-(define loops null)
-(define bridges null)
-(define summary null)
-; just for debugging
-(define (expose a b c)
-  (set! loops a)
-  (set! bridges b)
-  (set! summary c))
-
-(module+ main
-
+(define (trace-draw trace-file)
   (define all-loops null)
   (define all-bridges null)
   (define jit-summary-lines null)
 
-  (command-line
-   #:args (trace-file)
-   (define record-loop #f)
-   (define record-bridge #f)
-   (define record-summary #f)
+  (define record-loop #f)
+  (define record-bridge #f)
+  (define record-summary #f)
 
-   (define current-loop-lines null)
-   (define current-bridge-lines null)
-   (define current-summary-lines null)
+  (define current-loop-lines null)
+  (define current-bridge-lines null)
+  (define current-summary-lines null)
 
-   (with-input-from-file trace-file
-     (lambda ()
-       (for ([ln (in-lines)])
-         ;; enter recording a loop/bridge/summary
-         (when (regexp-match #rx"[[0-9a-zA-Z]+] {jit-log-opt-loop" ln)
-           (set! record-loop #t))
-         (when (regexp-match #rx"[[0-9a-zA-Z]+] {jit-log-opt-bridge" ln)
-           (set! record-bridge #t))
-         (when (regexp-match #rx"[[0-9a-zA-Z]+] {jit-summary" ln)
-           (set! record-summary #t))
+  (with-input-from-file trace-file
+    (lambda ()
+      (for ([ln (in-lines)])
+        ;; enter recording a loop/bridge/summary
+        (when (regexp-match #rx"[[0-9a-zA-Z]+] {jit-log-opt-loop" ln)
+          (set! record-loop #t))
+        (when (regexp-match #rx"[[0-9a-zA-Z]+] {jit-log-opt-bridge" ln)
+          (set! record-bridge #t))
+        (when (regexp-match #rx"[[0-9a-zA-Z]+] {jit-summary" ln)
+          (set! record-summary #t))
 
-         ;; record
-         (when record-loop
-           (set! current-loop-lines (cons ln current-loop-lines)))
-         (when record-bridge
-           (set! current-bridge-lines (cons ln current-bridge-lines)))
-         (when record-summary
-           (set! current-summary-lines (cons ln current-summary-lines)))
+        ;; record
+        (when record-loop
+          (set! current-loop-lines (cons ln current-loop-lines)))
+        (when record-bridge
+          (set! current-bridge-lines (cons ln current-bridge-lines)))
+        (when record-summary
+          (set! current-summary-lines (cons ln current-summary-lines)))
 
-         ;; exit recording loop/bridge/summary
-         (when (and record-summary
-                    (regexp-match #rx"[[0-9a-zA-Z]+] jit-summary}" ln))
-           (set! record-summary #f)
-           (set! jit-summary-lines (reverse current-summary-lines))
-           (set! current-summary-lines null))
-         (when (and record-loop
-                    (regexp-match #rx"[[0-9a-zA-Z]+] jit-log-opt-loop}" ln))
-           (set! record-loop #f)
-           (set! all-loops (cons (process-trace-lines (reverse current-loop-lines)) all-loops))
-           (set! current-loop-lines null))
-         (when (and record-bridge
-                    (regexp-match #rx"[[0-9a-zA-Z]+] jit-log-opt-bridge}" ln))
-           (set! record-bridge #f)
-           (set! all-bridges (cons (process-bridge-trace-lines (reverse current-bridge-lines)) all-bridges))
-           (set! current-bridge-lines null))
-         ))
-     ))
+        ;; exit recording loop/bridge/summary
+        (when (and record-summary
+                   (regexp-match #rx"[[0-9a-zA-Z]+] jit-summary}" ln))
+          (set! record-summary #f)
+          (set! jit-summary-lines (reverse current-summary-lines))
+          (set! current-summary-lines null))
+        (when (and record-loop
+                   (regexp-match #rx"[[0-9a-zA-Z]+] jit-log-opt-loop}" ln))
+          (set! record-loop #f)
+          (set! all-loops (cons (process-trace-lines (reverse current-loop-lines)) all-loops))
+          (set! current-loop-lines null))
+        (when (and record-bridge
+                   (regexp-match #rx"[[0-9a-zA-Z]+] jit-log-opt-bridge}" ln))
+          (set! record-bridge #f)
+          (set! all-bridges (cons (process-bridge-trace-lines (reverse current-bridge-lines)) all-bridges))
+          (set! current-bridge-lines null))
+        ))
+    )
 
   (define ordered-loops (reverse all-loops))
   (define ordered-bridges (reverse all-bridges))
 
-  (expose ordered-loops ordered-bridges jit-summary-lines)
-
   ((dynamic-require gui 'make-gui)
    #:traces ordered-loops
    #:bridges ordered-bridges
-   #:jit-summary jit-summary-lines)
+   #:jit-summary jit-summary-lines))
+
+(module+ main
+
+  (command-line
+   #:args (trace-file)
+   (trace-draw trace-file))
   )
