@@ -42,9 +42,19 @@
                  [width (- screen-w 400)]
                  [height (- screen-h 400)]))
 
+  (define main-panel
+    (new vertical-panel%
+         [parent f]
+         [alignment '(left top)]))
+
   (define panel (new horizontal-panel%
-                     [parent f]
+                     [parent main-panel]
                      [alignment '(left center)]))
+
+  (define below-message
+    (new message%
+         [parent main-panel]
+         [label ""]))
 
   (define refresh-offscreen? #t)
   (define offscreen #f)
@@ -197,6 +207,7 @@
                                 (mouse-x . <= . x-right)
                                 (mouse-y . <= . y-bottom)
                                 t-b))))
+                     ;; setting a pinned-trace
                      (when (and hover-trace
                                 (send e button-down?)
                                 (not (equal? pinned-trace hover-trace)))
@@ -205,13 +216,16 @@
                          (send vpanel delete-child infobox)
                          (send vpanel add-child trace-info-canvas)
                          (send vpanel set-selection 1))
-                       (send trace-info-canvas refresh))
+                       (send trace-info-canvas refresh)
+                       (update-message-bar))
+                     ;; unsetting a pinned-trace
                      (when (and (not hover-trace)
                                 (send e button-down?))
                        (when (= (send vpanel get-selection) 1)
                          (send trace-info-canvas refresh))
                        (set! pinned-trace #f)
                        (set! refresh-offscreen? #t)
+                       (update-message-bar)
                        (low-priority-refresh))
                      (unless (equal? hover hover-trace)
                        (set! hover hover-trace)
@@ -266,7 +280,7 @@
   (define vpanel (new tab-panel%
                       [choices (list "Summary" "Trace Codes")]
                       [parent panel]
-                      [alignment '(left top)]
+                      [alignment '(right top)]
                       [stretchable-width #f]
                       [min-width 500]
                       [callback (lambda (b e)
@@ -325,7 +339,18 @@
          [init-value summary]
          [style '(multiple hscroll)]))
 
-
+  (define (update-message-bar)
+    (if (trace? pinned-trace)
+        (let ()
+          (define msg
+            (if (trace-inner-loop pinned-trace)
+                (format "Run ~a / ~a times"
+                        (hash-ref labeled-counts (trace-label pinned-trace) #f)
+                        (hash-ref labeled-counts (trace-label (trace-inner-loop pinned-trace)) #f))
+                (format "Run ~a times"
+                        (hash-ref labeled-counts (trace-label pinned-trace) #f))))
+          (send below-message set-label msg))
+        (send below-message set-label "")))
 
   (send f show #t)
   )
