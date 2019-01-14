@@ -3,9 +3,9 @@
 (require racket/runtime-path
          racket/cmdline
          racket/string
-         "struct.rkt")
+         "private/struct.rkt")
 
-(define-runtime-module-path gui "gui.rkt")
+(define-runtime-module-path gui "private/gui.rkt")
 
 (define entry-bridge-count 0)
 
