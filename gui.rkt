@@ -242,7 +242,7 @@
   (define summary (string-join jit-summary "\n"))
 
   (define vpanel (new tab-panel%
-                      [choices (list "Overall" "Trace")]
+                      [choices (list "Summary" "Trace Codes")]
                       [parent panel]
                       [alignment '(left top)]
                       [stretchable-width #f]
