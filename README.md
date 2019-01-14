@@ -8,4 +8,9 @@ You can use the given `demo.trace` file to see how it works:
 
     $ racket main.rkt demo.trace
 
+Here's how it should look like:
+
+![trace-draw](https://user-images.githubusercontent.com/120652/51144556-693a6c00-181f-11e9-9ed4-fc969ae3819d.png)
+
+
 Created by modifying [mflatt](https://github.com/mflatt)'s [pkg-dep-draw](https://github.com/mflatt/pkg-dep-draw).
