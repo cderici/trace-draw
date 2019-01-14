@@ -188,6 +188,8 @@
                        (send trace-info-canvas refresh))
                      (when (and (not hover-trace)
                                 (send e button-down?))
+                       (when (= (send vpanel get-selection) 1)
+                         (send trace-info-canvas refresh))
                        (set! pinned-trace #f)
                        (set! refresh-offscreen? #t)
                        (low-priority-refresh))
