@@ -47,13 +47,13 @@
   (define inner-guards null)
 
   (define jump #f)
-  
+
   (define already-processed #f)
   (define racket-code #f)
 
   (for ([line-str (in-list trace-lines-str)])
     (set! already-processed #f)
-      
+
     (when (and (not outer-label) (not is-entry-bridge?) (string-contains? line-str "entry bridge"))
       (set! is-entry-bridge? #t)
       (set! already-processed #t)
@@ -62,7 +62,7 @@
 
     (when (and (not racket-code) (string-contains? line-str "# Loop "))
       (set! racket-code line-str))
-    
+
     (when (and (not is-entry-bridge?) outer-label (not inner-label) (string-contains? line-str "label("))
       (set! inner-label (get-label-id line-str))
       (set! are-we-in-inner-loop #t)
@@ -92,7 +92,7 @@
   (define ordered-inner-guards (reverse inner-guards))
   (define ordered-outer-code (reverse outer-code))
   (define ordered-inner-code (reverse inner-code))
-  
+
   (if is-entry-bridge?
       (make-trace (get-entry-bridge-id)
                   outer-label-line
@@ -138,7 +138,7 @@
   (define guards null)
   (define jump #f)
   (define code null)
-  
+
   (for ([line-str (in-list trace-lines-str)])
 
     (when (and (not guard-id) (string-contains? line-str "bridge out of Guard "))
@@ -148,7 +148,7 @@
     (when (string-contains? line-str " guard_")
       (let ([guard-info (get-guard-info line-str)])
         (set! guards (cons guard-info guards))))
-    
+
     (when (and (not jump) (string-contains? line-str " jump("))
       (set! jump (get-jump-info line-str)))
 
@@ -168,45 +168,61 @@
 
 (define loops null)
 (define bridges null)
-
-(define (expose a b)
+(define summary null)
+; just for debugging
+(define (expose a b c)
   (set! loops a)
-  (set! bridges b))
+  (set! bridges b)
+  (set! summary c))
 
 (module+ main
 
   (define all-loops null)
   (define all-bridges null)
+  (define jit-summary-lines null)
 
   (command-line
    #:args (trace-file)
    (define record-loop #f)
    (define record-bridge #f)
-   
+   (define record-summary #f)
+
    (define current-loop-lines null)
    (define current-bridge-lines null)
-   
+   (define current-summary-lines null)
+
    (with-input-from-file trace-file
      (lambda ()
        (for ([ln (in-lines)])
-         ;; enter recording a loop/bridge
+         ;; enter recording a loop/bridge/summary
          (when (regexp-match #rx"[[0-9a-zA-Z]+] {jit-log-opt-loop" ln)
            (set! record-loop #t))
          (when (regexp-match #rx"[[0-9a-zA-Z]+] {jit-log-opt-bridge" ln)
            (set! record-bridge #t))
+         (when (regexp-match #rx"[[0-9a-zA-Z]+] {jit-summary" ln)
+           (set! record-summary #t))
 
          ;; record
          (when record-loop
            (set! current-loop-lines (cons ln current-loop-lines)))
          (when record-bridge
            (set! current-bridge-lines (cons ln current-bridge-lines)))
+         (when record-summary
+           (set! current-summary-lines (cons ln current-summary-lines)))
 
-         ;; exit recording loop/bridge
-         (when (regexp-match #rx"[[0-9a-zA-Z]+] jit-log-opt-loop}" ln)
+         ;; exit recording loop/bridge/summary
+         (when (and record-summary
+                    (regexp-match #rx"[[0-9a-zA-Z]+] jit-summary}" ln))
+           (set! record-summary #f)
+           (set! jit-summary-lines (reverse current-summary-lines))
+           (set! current-summary-lines null))
+         (when (and record-loop
+                    (regexp-match #rx"[[0-9a-zA-Z]+] jit-log-opt-loop}" ln))
            (set! record-loop #f)
            (set! all-loops (cons (process-trace-lines (reverse current-loop-lines)) all-loops))
            (set! current-loop-lines null))
-         (when (regexp-match #rx"[[0-9a-zA-Z]+] jit-log-opt-bridge}" ln)
+         (when (and record-bridge
+                    (regexp-match #rx"[[0-9a-zA-Z]+] jit-log-opt-bridge}" ln))
            (set! record-bridge #f)
            (set! all-bridges (cons (process-bridge-trace-lines (reverse current-bridge-lines)) all-bridges))
            (set! current-bridge-lines null))
@@ -215,36 +231,11 @@
 
   (define ordered-loops (reverse all-loops))
   (define ordered-bridges (reverse all-bridges))
-  
-  (expose ordered-loops ordered-bridges)
 
+  (expose ordered-loops ordered-bridges jit-summary-lines)
 
   ((dynamic-require gui 'make-gui)
    #:traces ordered-loops
-   #:bridges ordered-bridges)
-  
-  #;(pkg-dep-draw #:root-pkgs '()
-                  #:select-pkgs '()
-                  #:srcs '()
-                  #:no-build? #f
-                  #:no-build-lines? #f
-                  #:no-trans-lines? #f
-                  #:invert? #f
-                  #:quiet #f
-                  #:dest-file #f
-                  #:dest-format 'png
-                  #:scale 4
-                  (make-hash
-                   (list
-                    (cons "A" (pkg (list "B" "C") (list)))
-                    (cons "B" (pkg (list "D") (list)))
-                    (cons "C" (pkg (list) (list)))
-                    (cons "D" (pkg (list "A") (list)))))
-                  (make-hash
-                   (list
-                    (cons "A" (pkg (list "D") (list)))
-                    (cons "B" (pkg (list "A") (list)))
-                    (cons "C" (pkg (list "A") (list)))
-                    (cons "D" (pkg (list "B") (list))))))
-  
+   #:bridges ordered-bridges
+   #:jit-summary jit-summary-lines)
   )

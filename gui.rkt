@@ -2,6 +2,7 @@
 
 (require racket/gui/base
          racket/class
+         racket/string
          "draw.rkt"
          "struct.rkt"
          "config.rkt"
@@ -11,7 +12,8 @@
 (define (->int n) (ceiling (inexact->exact n)))
 
 (define (make-gui #:traces traces
-                  #:bridges bridges)
+                  #:bridges bridges
+                  #:jit-summary jit-summary)
 
   (define pinned-trace #f)
   (define hover #f)
@@ -24,7 +26,7 @@
                  [width (- screen-w 400)]
                  [height (- screen-h 400)]))
 
-  (define panel (new vertical-panel%
+  (define panel (new horizontal-panel%
                      [parent f]
                      [alignment '(left center)]))
 
@@ -240,37 +242,48 @@
         (->int (* view-scale total-h))
         0.0 0.0)
 
-  (define hpanel (new horizontal-panel%
+  (define summary
+    (string-join jit-summary "\n")
+    #;(format "~a traces\n...with ~a entry bridges\n~a bridges\n"
+            (length traces)
+            (length (filter (lambda (t) (trace-is-entry? t)) traces))
+            (length bridges)))
+
+  (define vpanel (new tab-panel%
+                      [choices (list "Overall" "Trace")]
                       [parent panel]
-                      [alignment '(left center)]
-                      [stretchable-height #f]))
+                      [alignment '(left top)]
+                      [stretchable-width #f]
+                      [min-width 400]
+                      [callback (lambda (b e)
+                                  (if
+                                   (= (send b get-selection) 0)
+                                   ;; overall
+                                   (let ()
+                                     (send vpanel add-child infobox)
+                                     (send vpanel delete-child trace-info-canvas))
+                                   ;; trace
+                                   (let ()
+                                     (send vpanel delete-child infobox)
+                                     (send vpanel add-child trace-info-canvas))))]))
+
+  (define trace-info-canvas
+    (new canvas%
+         [parent vpanel]
+         [paint-callback (lambda (c dc)
+                           (printf "trace-info-canvas paint callback is called\n"))]
+         [style '(hscroll vscroll deleted)]))
 
   (define infobox
-    (new message%
-         [parent hpanel]
-         [label (format "~a traces\n...with ~a entry bridges\n~a bridges\n"
-                        (length traces)
-                        (length (filter (lambda (t) (trace-is-entry? t)) traces))
-                        (length bridges))]
-         ))
+    (new text-field%
+         [parent vpanel]
+         [label #f]
+         [callback (lambda (tf ce) ; not changable
+                     (send tf set-value summary))]
+         [init-value summary]
+         [style '(multiple hscroll)]))
 
-  #;(define build-deps-checkbox
-    (new check-box%
-         [parent hpanel]
-         [label "Show build dependencies"]
-         [value #t]
-         [callback (lambda (cb e) (send c reset-hilites))]))
-  #;(define trans-deps-checkbox
-    (new check-box%
-         [parent hpanel]
-         [label "Show transitive dependencies"]
-         [value #t]
-         [callback (lambda (cb e) (send c reset-hilites))]))
-  #;(define invert-checkbox
-    (new check-box%
-         [parent hpanel]
-         [label "Reverse links"]
-         [value #f]
-         [callback (lambda (cb e) (send c reset-hilites))]))
 
-  (send f show #t))
+
+  (send f show #t)
+  )
