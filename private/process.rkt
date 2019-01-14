@@ -22,8 +22,6 @@
   (define chosen-counts (take (sort (hash-keys jit-counts) >) (min n l)))
   (define chosen-labels (for/hash ([c (in-list chosen-counts)])
                           (values c (hash-ref jit-counts c))))
-  (printf "candidates : ~a\n" (hash-keys candidates))
-  (printf "chosen-labels : ~a\n" chosen-labels)
   (for/fold ([traces null])
             ([(lbls lines) (in-hash candidates)])
     (or (for/or ([(cnt cl) (in-hash chosen-labels)])
