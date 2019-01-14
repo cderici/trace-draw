@@ -14,6 +14,14 @@
 
 (define entry-bridge-count 0)
 
+(define (clear-trace-code-line line-str)
+  (cond
+    [(string-contains? line-str "debug_merge_point")
+     (car (string-split (cadr (string-split line-str ", '")) "')"))]
+    [(string-contains? line-str ": ")
+     (string-join (cons "\t" (cdr (string-split line-str " "))) " ")]
+    [else line-str]))
+
 ;; (listof trace-candidates) jit-counts number -> (listof traces)
 (define (pick-most-used-traces candidates jit-counts lbl->counts n)
   ;; ASSUMES : jit-counts doesn't contain duplicate counts
@@ -202,9 +210,11 @@
     (when (and (not already-processed) (not jump) (string-contains? line-str " jump("))
       (set! jump (get-jump-info line-str)))
 
+    (define clean-line-str (clear-trace-code-line line-str))
+
     (cond
-      [are-we-in-inner-loop (set! inner-code (cons line-str inner-code))]
-      [else (set! outer-code (cons line-str outer-code))])
+      [are-we-in-inner-loop (set! inner-code (cons clean-line-str inner-code))]
+      [else (set! outer-code (cons clean-line-str outer-code))])
     )
 
   (define ordered-outer-guards (reverse outer-guards))
@@ -271,7 +281,9 @@
     (when (and (not jump) (string-contains? line-str " jump("))
       (set! jump (get-jump-info line-str)))
 
-    (set! code (cons line-str code))
+    (define clean-line-str (clear-trace-code-line line-str))
+
+    (set! code (cons clean-line-str code))
 
     )
 
