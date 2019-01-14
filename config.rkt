@@ -25,6 +25,7 @@
   (make-font #:face face #:size FONT-SIZE #:weight 'bold #:size-in-pixels? #t))
 
 (define font (make-font #:face face #:size FONT-SIZE #:size-in-pixels? #t))
+(define t-font (make-font #:face face #:size FONT-SIZE #:size-in-pixels? #t))
 
 ;; Pens
 (define box-pen (make-pen #:color "black" #:width 1 #:style 'solid))

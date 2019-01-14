@@ -267,11 +267,32 @@
                                      (send vpanel delete-child infobox)
                                      (send vpanel add-child trace-info-canvas))))]))
 
+  (define scrollbars-already-set #f)
+
   (define trace-info-canvas
     (new canvas%
          [parent vpanel]
-         [paint-callback (lambda (c dc)
-                           (printf "trace-info-canvas paint callback is called\n"))]
+         [paint-callback
+          (lambda (c dc)
+            (send dc set-font t-font)
+            (when pinned-trace
+              (let ([text (if (trace? pinned-trace)
+                              (trace-text pinned-trace)
+                              (bridge-text pinned-trace))])
+                (define-values (_ max-width total-height)
+                  (for/fold ([y 0][max-w 0][total-h 0])
+                            ([s (in-list (string-split text "\n"))])
+                    (define-values (w h d a) (send dc get-text-extent s))
+                    (send dc draw-text s 0 y #t)
+                    (values (+ y h) (max max-w w) (+ total-h h))))
+                (unless scrollbars-already-set
+                  (send c init-auto-scrollbars
+                        (->int max-width)
+                        (->int total-height)
+                        0 0)
+                  (set! scrollbars-already-set #t))
+
+                )))]
          [style '(hscroll vscroll deleted)]))
 
   (define infobox
