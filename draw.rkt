@@ -110,7 +110,7 @@
         (display-bound-h bounds))
 
   (send dc draw-text "bridge for" (+ current-x TGAP) (+ current-y TGAP) #t)
-  (send dc draw-text (bridge-guard-id b) (+ current-x TGAP) (+ current-y TGAP TGAP) #t))
+  (send dc draw-text (bridge-guard-id b) (+ current-x TGAP) (+ current-y TGAP TGAP GAP) #t))
 
 (define (draw-connections dc trace-jumps bridges guard-exits inner-loop-of labeled-bounds-ht hilites)
 

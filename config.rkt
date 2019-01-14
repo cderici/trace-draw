@@ -3,19 +3,19 @@
 
 (provide (all-defined-out))
 
-(define FONT-SIZE 10)
+(define FONT-SIZE 9)
 (define SPACE-SIZE 10)
 (define SEP-SIZE FONT-SIZE)
 (define MARGIN FONT-SIZE)
 
-(define t-width 100) ; trace width
-(define t-height 200); trace height
+(define t-width 70) ; trace width
+(define t-height 100); trace height
 
 (define b-width t-width)
 (define b-height (/ t-height 2))
 
 (define SPLINE-SHIFT 100)
-(define GAP 10)
+(define GAP 5)
 (define TGAP (* 2 GAP))
 (define X-GAP (* 3 t-width))
 (define Y-GAP (* 2 GAP))
@@ -29,7 +29,7 @@
 ;; Pens
 (define box-pen (make-pen #:color "black" #:width 1 #:style 'solid))
 (define line-pen (make-pen #:color "black" #:width 1 #:style 'short-dash))
-(define hilite-pen (make-pen #:color "blue" #:width 2 #:style 'solid))
+(define hilite-pen (make-pen #:color "blue" #:width 1 #:style 'solid))
 
 (define tracebox-color (make-color 150 0 100 0.3))
 (define tracebox-brush
