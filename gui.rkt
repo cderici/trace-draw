@@ -182,6 +182,11 @@
                                 (not (equal? pinned-trace hover-trace)))
                        (set! pinned-trace hover-trace)
                        (send trace-info-canvas refresh))
+                     (when (and (not hover-trace)
+                                (send e button-down?))
+                       (set! pinned-trace #f)
+                       (set! refresh-offscreen? #t)
+                       (low-priority-refresh))
                      (unless (equal? hover hover-trace)
                        (set! hover hover-trace)
                        (reset-hilites)))
@@ -221,34 +226,16 @@
               #:display-bounds-ht display-bounds-ht
               #:view-scale view-scale
               #:hilites hilites
+              #:pinned-trace pinned-trace
               #:trace-jumps trace-jumps
-              #:guard-exits guard-exits)
-    #;(draw-graph dc
-                #:pkgs pkgs
-                #:invert-pkgs invert-pkgs
-                #:pkg-bounds pkg-bounds
-                #:at-depth at-depth
-                #:reps reps
-                #:no-build-reps no-build-reps
-                #:total-w total-w
-                #:total-h total-h
-                #:view-scale view-scale
-                #:invert? (send invert-checkbox get-value)
-                #:all-deps? (send build-deps-checkbox get-value)
-                #:trans-deps? (send trans-deps-checkbox get-value)
-                #:hilites hilites))
+              #:guard-exits guard-exits))
 
   (send c init-auto-scrollbars
         (->int (* view-scale total-w))
         (->int (* view-scale total-h))
         0.0 0.0)
 
-  (define summary
-    (string-join jit-summary "\n")
-    #;(format "~a traces\n...with ~a entry bridges\n~a bridges\n"
-            (length traces)
-            (length (filter (lambda (t) (trace-is-entry? t)) traces))
-            (length bridges)))
+  (define summary (string-join jit-summary "\n"))
 
   (define vpanel (new tab-panel%
                       [choices (list "Overall" "Trace")]

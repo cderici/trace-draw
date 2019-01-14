@@ -56,7 +56,7 @@
                       (make-object point% (+ end-x 4) (- end-y 4))
                       (make-object point% (+ end-x 4) (+ end-y 5))))))))
 
-(define (draw-trace dc t bounds hilites)
+(define (draw-trace dc t bounds hilites pinned-trace)
   (send dc set-pen box-pen)
   (define label (trace-label t))
   (define hilite? (for/or ([h (in-list hilites)])
@@ -65,7 +65,7 @@
                              (equal? h
                                      (trace-label
                                       (trace-inner-loop t)))))))
-  (if hilite?
+  (if (or hilite? (eq? t pinned-trace))
       (send dc set-brush tracebox-highlight-brush)
       (send dc set-brush tracebox-brush))
   (define current-x (display-bound-x bounds))
@@ -92,7 +92,7 @@
     )
   )
 
-(define (draw-bridge dc b bounds hilites)
+(define (draw-bridge dc b bounds hilites pinned-trace)
   (send dc set-pen box-pen)
   (define hilite? (for/or ([h (in-list hilites)])
                     (equal? (bridge-guard-id b) h)))
@@ -100,7 +100,7 @@
   (define current-x (display-bound-x bounds))
   (define current-y (display-bound-y bounds))
 
-  (if hilite?
+  (if (or hilite? (eq? b pinned-trace))
       (send dc set-brush bridgebox-highlight-brush)
       (send dc set-brush bridgebox-brush))
 
@@ -176,6 +176,7 @@
                   #:display-bounds-ht display-bounds-ht
                   #:view-scale view-scale
                   #:hilites hilites
+                  #:pinned-trace pinned-trace
                   #:trace-jumps trace-jumps
                   #:guard-exits guard-exits)
   (send dc set-font font)
@@ -185,8 +186,8 @@
 
   (for ([(t-b bounds) (in-hash display-bounds-ht)])
     (if (trace? t-b)
-        (draw-trace dc t-b bounds hilites)
-        (draw-bridge dc t-b bounds hilites)))
+        (draw-trace dc t-b bounds hilites pinned-trace)
+        (draw-bridge dc t-b bounds hilites pinned-trace)))
 
   (draw-connections dc trace-jumps bridges  guard-exits inner-loop-of labeled-bounds-ht hilites)
 
