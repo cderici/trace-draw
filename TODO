@@ -1,10 +1,15 @@
 
+- set the total width/height based on trace/bridge numbers
+- get the use counts of traces and draw them ordered
+- scrolling on the right side panel is very inefficient
+- highlighting is bit wonky
+
 - DONE show all the traces (with inner loops)
 - DONE show all the bridges
-- connect who jumps to where with lines/curves
-- get the use counts of traces and draw them ordered
+- DONE connect who jumps to where with lines/curves
+- DONE make all the traces and bridges be found by mouse position
+- DONE click on a trace to open a window with all the trace codes
 
-- make all the traces and bridges be found by mouse position
-- click on a trace to open a window with all the trace codes
+-for implementation-
 
 - separate the traces and bridge-guard-ids in hilites
