@@ -6,14 +6,25 @@
          "draw.rkt"
          "struct.rkt"
          "config.rkt"
-         "jump-deps.rkt")
+         "jump-deps.rkt"
+         "process.rkt")
 
 (provide make-gui)
 (define (->int n) (ceiling (inexact->exact n)))
 
-(define (make-gui #:traces traces
-                  #:bridges bridges
-                  #:jit-summary jit-summary)
+(define (make-gui #:traces trace-lines
+                  #:bridges bridge-lines
+                  #:jit-summary jit-summary
+                  #:jit-counts jit-count-lines)
+
+  (define trace-candidates (pre-process-trace-lines trace-lines))
+  (define bridge-candidates (pre-process-bridge-lines bridge-lines))
+
+  ; mapping from numbers (counts) -> trace-labels
+  (define jit-counts (process-jit-counts jit-count-lines))
+
+  (define traces (pick-most-used-traces trace-candidates jit-counts 20))
+  (define bridges (pick-bridges-for traces bridge-candidates))
 
   (define pinned-trace #f)
   (define hover #f)
