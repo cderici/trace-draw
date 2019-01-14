@@ -21,9 +21,14 @@
   (define bridge-candidates (pre-process-bridge-lines bridge-lines))
 
   ; mapping from numbers (counts) -> trace-labels
-  (define jit-counts (process-jit-counts jit-count-lines))
+  ; and   ; trace-labels -> counts
+  (define-values (jit-counts labeled-counts)
+    (process-jit-counts jit-count-lines))
 
-  (define traces (pick-most-used-traces trace-candidates jit-counts 20))
+  (define traces
+    (pick-most-used-traces trace-candidates
+                           jit-counts labeled-counts 20))
+
   (define bridges (pick-bridges-for traces bridge-candidates))
 
   (define pinned-trace #f)
@@ -54,11 +59,15 @@
            [x-entry 100]
            [x-trace (+ x-entry t-width X-GAP)]
            [x-bridge (+ x-trace t-width X-GAP)])
+      (define sorted-traces
+        (sort traces (lambda (t1 t2)
+                       (< (trace-use-count t1)
+                          (trace-use-count t2)))))
       (define-values (new-ht y-entry-next y-trace-next)
         (for/fold ([ht (hash)]
                    [y-entry y-init]
                    [y-trace y-init])
-                  ([t (in-list traces)])
+                  ([t (in-list sorted-traces)])
           (if (trace-is-entry? t)
               (values
                (hash-set ht t (make-display-bound

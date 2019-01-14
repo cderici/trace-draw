@@ -15,18 +15,21 @@
 (define entry-bridge-count 0)
 
 ;; (listof trace-candidates) jit-counts number -> (listof traces)
-(define (pick-most-used-traces candidates jit-counts n)
+(define (pick-most-used-traces candidates jit-counts lbl->counts n)
   ;; ASSUMES : jit-counts doesn't contain duplicate counts
   ;; (i.e. no two traces that are used the same many times) (cross-fingers)
   (define l (hash-count jit-counts))
   (define chosen-counts (take (sort (hash-keys jit-counts) >) (min n l)))
-  (define chosen-labels (map (lambda (c) (hash-ref jit-counts c)) chosen-counts))
+  (define chosen-labels (for/hash ([c (in-list chosen-counts)])
+                          (values c (hash-ref jit-counts c))))
+  (printf "candidates : ~a\n" (hash-keys candidates))
+  (printf "chosen-labels : ~a\n" chosen-labels)
   (for/fold ([traces null])
             ([(lbls lines) (in-hash candidates)])
-    (if (for/or ([cl (in-list chosen-labels)])
+    (or (for/or ([(cnt cl) (in-hash chosen-labels)])
           (for/or ([l (in-list lbls)])
-            (equal? cl l)))
-        (cons (process-trace-lines lines) traces)
+            (and (equal? cl l)
+                 (cons (process-trace-lines lines lbl->counts) traces))))
         traces)))
 
 (define (pick-bridges-for traces bridge-candidates)
@@ -92,7 +95,7 @@
             (error (format
                     "couldn't get the loop number from : ~a\n"
                     line-str)))
-          (set! labels (cons n-str labels)))
+          (set! labels (cons (string-append "Loop " n-str) labels)))
         (set! break? #t))
 
       (when (string-contains? line-str "label(")
@@ -120,21 +123,28 @@
     (hash-set bridge-candidates guard-id bridge-lines-str)))
 
 (define (process-jit-counts jit-count-lines)
-  (for/fold ([counts (hash)])
+  (for/fold ([count->lbl (hash)]
+             [lbl->count (hash)])
             ([line-str (in-list jit-count-lines)])
     (cond
       [(string-contains? line-str "TargetToken(")
-       (let* ([f (string-split line-str "):")])
-         (hash-set counts (string->number (cadr f)) (car (string-split (car f) "TargetToken("))))]
+       (let* ([f (string-split line-str "):")]
+              [cnt (string->number (cadr f))]
+              [lbl (car (string-split (car f) "TargetToken("))])
+         (values (hash-set count->lbl cnt lbl)
+                 (hash-set lbl->count lbl cnt)))]
       [(string-contains? line-str "entry ")
-       (let* ([f (string-split line-str ":")])
-         (hash-set counts (string->number (cadr f)) (cadr (string-split (car f) " "))))]
-      [else counts])))
+       (let* ([f (string-split line-str ":")]
+              [cnt (string->number (cadr f))]
+              [lbl (format "Loop ~a" (cadr (string-split (car f) " ")))])
+         (values (hash-set count->lbl cnt lbl)
+                 (hash-set lbl->count lbl cnt)))]
+      [else (values count->lbl lbl->count)])))
 
 ;; (listof string) -> trace
 ;; ASSUMES : entry bridges never contain labels (noone jumps to them)
 ;; ASSUMES : a trace never contains more than 2 "label"s (one for peeled and one for main)
-(define (process-trace-lines trace-lines-str)
+(define (process-trace-lines trace-lines-str lbl->counts)
   ;; let's try to make it in a single pass
 
   (define is-entry-bridge? #f)
@@ -161,6 +171,13 @@
     (when (and (not outer-label) (not is-entry-bridge?) (string-contains? line-str "entry bridge"))
       (set! is-entry-bridge? #t)
       (set! already-processed #t)
+      (let* ((splt (string-split line-str " "))
+               (n-str (list-ref splt 2)))
+          (unless (string->number n-str)
+            (error (format
+                    "couldn't get the loop number from : ~a\n"
+                    line-str)))
+          (set! outer-label (string-append "Loop " n-str)))
       (set! outer-label-line line-str)
       (set! racket-code line-str))
 
@@ -198,12 +215,12 @@
   (define ordered-inner-code (reverse inner-code))
 
   (if is-entry-bridge?
-      (make-trace (get-entry-bridge-id)
+      (make-trace outer-label
                   outer-label-line
                   #t
                   #f
                   racket-code
-                  -1
+                  (hash-ref lbl->counts outer-label)
                   ordered-outer-guards
                   jump
                   (string-join ordered-outer-code "\n"))
@@ -214,7 +231,7 @@
                                          #f
                                          #f
                                          #f
-                                         -1
+                                         (hash-ref lbl->counts inner-label)
                                          ordered-inner-guards
                                          jump
                                          (string-join ordered-inner-code "\n")))])
@@ -223,7 +240,7 @@
                     #f
                     maybe-inner
                     racket-code
-                    -1
+                    (hash-ref lbl->counts outer-label)
                     ordered-outer-guards
                     jump
                     (string-join (append ordered-outer-code ordered-inner-code) "\n")))))
