@@ -122,7 +122,7 @@
                     -1
                     ordered-outer-guards
                     jump
-                    (string-join ordered-outer-code "\n")))))
+                    (string-join (append ordered-outer-code ordered-inner-code) "\n")))))
 
 (define (get-bridge-guard-id line-str)
   (let* ([second-part (cadr (string-split line-str "Guard "))])
