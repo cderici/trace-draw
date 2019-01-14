@@ -1,10 +1,10 @@
 
 - set the total width/height based on trace/bridge numbers
-- get the use counts of traces and draw them ordered
 - scrolling on the right side panel is very inefficient
 - highlighting is bit wonky
 - relativize the mouse position checks to find traces (scaling/scrolling is messing it up right now)
 
+- DONE get the use counts of traces and draw them ordered
 - DONE show all the traces (with inner loops)
 - DONE show all the bridges
 - DONE connect who jumps to where with lines/curves
@@ -13,4 +13,5 @@
 
 -for implementation-
 
+- improve the pick-bridges-for in private/process to process all depth levels (not just the first two) (for the bridges guard-exiting to other bridges)
 - separate the traces and bridge-guard-ids in hilites
