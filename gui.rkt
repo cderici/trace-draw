@@ -275,14 +275,19 @@
          [parent vpanel]
          [paint-callback
           (lambda (c dc)
-            (send dc set-font t-font)
             (when pinned-trace
+              (send dc set-font t-font)
               (let ([text (if (trace? pinned-trace)
                               (trace-text pinned-trace)
                               (bridge-text pinned-trace))])
                 (define-values (_ max-width total-height)
                   (for/fold ([y 0][max-w 0][total-h 0])
                             ([s (in-list (string-split text "\n"))])
+                    (send dc set-text-foreground "black")
+                    (when (string-contains? s " guard_")
+                      (send dc set-text-foreground "red"))
+                    (when (string-contains? s " jump(")
+                      (send dc set-text-foreground "darkgreen"))
                     (define-values (w h d a) (send dc get-text-extent s))
                     (send dc draw-text s 0 y #t)
                     (values (+ y h) (max max-w w) (+ total-h h))))
