@@ -37,6 +37,17 @@
 
   (define-values (screen-w screen-h) (get-display-size))
 
+  (define y-init 50)
+  (define x-entry 100)
+  (define x-trace (+ x-entry t-width X-GAP))
+  (define x-bridge (+ x-trace t-width X-GAP))
+
+  (define total-w (+ x-bridge X-GAP))  ;(* 2 (- screen-w 400))
+  (define total-h
+    (+ y-init
+       (max (* (length traces) (+ t-height Y-GAP))
+            (* (length bridges) (+ b-height Y-GAP))))) ; #;(* 2 (- screen-h 400))
+
   (define f (new frame%
                  [label "Trace Draw"]
                  [width (- screen-w 400)]
@@ -61,14 +72,8 @@
   (define offscreen-dc #f)
   (define view-scale 1)
 
-  (define total-w (* 2 (- screen-w 400)))
-  (define total-h (* 2 (- screen-h 400)))
-
   (define display-bounds-ht ; display locations for traces and bridges
-    (let* ([y-init 50]
-           [x-entry 100]
-           [x-trace (+ x-entry t-width X-GAP)]
-           [x-bridge (+ x-trace t-width X-GAP)])
+    (let ()
       (define sorted-traces
         (sort traces (lambda (t1 t2)
                        (< (trace-use-count t1)
