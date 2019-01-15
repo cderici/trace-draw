@@ -202,8 +202,10 @@
 
                      (define hover-trace
                        (for/or ([(t-b bounds) (in-hash display-bounds-ht)])
-                         (let* ([x-left (* view-scale (display-bound-x bounds))]
-                                [y-top (* view-scale (display-bound-y bounds))]
+                         ; (define-values (w h) (get-client-size)) will be important when window resize
+                         (define-values (x y) (get-view-start))
+                         (let* ([x-left (- (* view-scale (display-bound-x bounds)) x)]
+                                [y-top (- (* view-scale (display-bound-y bounds)) y)]
                                 [x-right (+ x-left (* view-scale (display-bound-w bounds)))]
                                 [y-bottom (+ y-top (* view-scale (display-bound-h bounds)))])
                            (and (mouse-x . >= . x-left)
