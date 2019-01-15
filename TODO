@@ -1,9 +1,9 @@
 
-- set the total width/height based on trace/bridge numbers
 - scrolling on the right side panel is very inefficient
 - highlighting is bit wonky
-- relativize the mouse position checks to find traces (scaling/scrolling is messing it up right now)
 
+- DONE relativize the mouse position checks to find traces (scaling/scrolling is messing it up right now)
+- DONE set the total width/height based on trace/bridge numbers
 - DONE get the use counts of traces and draw them ordered
 - DONE show all the traces (with inner loops)
 - DONE show all the bridges
