@@ -189,7 +189,6 @@
 
                      (define mouse-x (send e get-x)) ; relative to the visible area
                      (define mouse-y (send e get-y))
-
                      (when (and (send e dragging?)
                                 (send e get-left-down))
                        (when (or (> (abs (- mouse-x prev-mouse-x)) 20)
@@ -203,10 +202,10 @@
 
                      (define hover-trace
                        (for/or ([(t-b bounds) (in-hash display-bounds-ht)])
-                         (let* ([x-left (display-bound-x bounds)]
-                                [y-top (display-bound-y bounds)]
-                                [x-right (+ x-left (display-bound-w bounds))]
-                                [y-bottom (+ y-top (display-bound-h bounds))])
+                         (let* ([x-left (* view-scale (display-bound-x bounds))]
+                                [y-top (* view-scale (display-bound-y bounds))]
+                                [x-right (+ x-left (* view-scale (display-bound-w bounds)))]
+                                [y-bottom (+ y-top (* view-scale (display-bound-h bounds)))])
                            (and (mouse-x . >= . x-left)
                                 (mouse-y . >= . y-top)
                                 (mouse-x . <= . x-right)
