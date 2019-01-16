@@ -1,6 +1,7 @@
 
 - scrolling on the right side panel is very inefficient
 - highlighting is bit wonky
+- reuse the labels extracted in the pre-process phase
 
 - DONE relativize the mouse position checks to find traces (scaling/scrolling is messing it up right now)
 - DONE set the total width/height based on trace/bridge numbers
