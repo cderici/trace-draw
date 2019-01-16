@@ -8,7 +8,15 @@ You can use the given `demo.trace` file to see how it works:
 
     $ racket main.rkt demo.trace
 
-Here's how it should look like:
+You can also use the given `demo-big.trace` file (~12M) to see how it behaves with big trace files:
+
+    $ racket main.rkt demo-big.trace
+
+Using the big file will also allow you to see the loading screen as well (it will be replaced with the main gui after loading):
+
+![loading](https://user-images.githubusercontent.com/120652/51274172-76309a00-199c-11e9-8a52-ba5ef32ef610.png)
+
+Here's how the main gui looks like after loading:
 
 ![trace-draw](https://user-images.githubusercontent.com/120652/51144556-693a6c00-181f-11e9-9ed4-fc969ae3819d.png)
 
