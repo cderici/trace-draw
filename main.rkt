@@ -10,7 +10,7 @@
 
 (define (trace-draw trace-file)
   (define-values (loop-lines bridge-lines jit-summary-lines jit-backend-count-lines)
-    (read-all trace-file))
+    (time (read-all trace-file)))
 
   ((dynamic-require gui 'make-gui)
    #:traces loop-lines

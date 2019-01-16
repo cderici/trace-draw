@@ -118,7 +118,7 @@
         (send status-bar set-value (add1 (send status-bar get-value))))))
 
   (send loading show #f)
-  (eprintf "DONE ...\n")
+  (eprintf "DONE in ")
 
   (define ordered-loop-lines (reverse all-loops))
   (define ordered-bridge-lines (reverse all-bridges))
