@@ -43,11 +43,15 @@
                             [parent loading]
                             [spacing 30]
                             [alignment '(center center)]))
-  (define msg (new message% [label (format "Loading : ~a" trace-file)][parent status-panel]))
   (define status-bar (new gauge% [label #f]
                           [parent status-panel]
                           [range number-of-lines]
                           [style '(horizontal vertical-label)]))
+  (define msg (new message%
+                   [label (format "Loading : ~a (~a lines)"
+                                  trace-file
+                                  number-of-lines)]
+                   [parent status-panel]))
   (send loading center 'both)
   (send loading show #t)
   (send status-bar set-value 0)
@@ -107,9 +111,8 @@
         (when record-counts
           (set! current-backend-count-lines (cons ln current-backend-count-lines)))
 
-        (send status-bar set-value (add1 (send status-bar get-value)))
-        ))
-    )
+        (send status-bar set-value (add1 (send status-bar get-value))))))
+
   (send loading show #f)
   (eprintf "DONE ...\n")
 
