@@ -15,7 +15,8 @@
 (define (make-gui #:traces trace-lines
                   #:bridges bridge-lines
                   #:jit-summary jit-summary
-                  #:jit-counts jit-count-lines)
+                  #:jit-counts jit-count-lines
+                  #:trace-file-name trace-file)
 
   (define trace-candidates (pre-process-trace-lines trace-lines))
   (define bridge-candidates (pre-process-bridge-lines bridge-lines))
@@ -281,7 +282,13 @@
         (->int (* view-scale total-h))
         0.0 0.0)
 
-  (define summary (string-join jit-summary "\n"))
+  (define summary
+    (let ([from-log-file (string-join jit-summary "\n")])
+      (if (null? jit-summary)
+          (format "No jit-summary is provided in the input : \"~a\"
+
+Consider using PYPYLOG=jit-summary...\n" trace-file)
+          from-log-file)))
 
   (define vpanel (new tab-panel%
                       [choices (list "Summary" "Trace Codes")]
@@ -341,6 +348,7 @@
     (new text-field%
          [parent vpanel]
          [label #f]
+         [font summary-font]
          [callback (lambda (tf ce) ; not changable
                      (send tf set-value summary))]
          [init-value summary]

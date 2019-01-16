@@ -16,7 +16,8 @@
    #:traces loop-lines
    #:bridges bridge-lines
    #:jit-summary jit-summary-lines
-   #:jit-counts jit-backend-count-lines))
+   #:jit-counts jit-backend-count-lines
+   #:trace-file-name trace-file))
 
 (module+ main
 
