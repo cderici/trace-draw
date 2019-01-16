@@ -318,8 +318,7 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                      (send vpanel delete-child infobox)
                                      (send vpanel add-child trace-info-canvas))))]))
 
-  (define scrollbars-already-set #f)
-
+  (define prev-pinned-trace #f)
   (define trace-info-canvas
     (new canvas%
          [parent vpanel]
@@ -331,8 +330,8 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
               (let ([text (if (trace? pinned-trace)
                               (trace-text pinned-trace)
                               (bridge-text pinned-trace))])
-                (define-values (_ max-width total-height)
-                  (for/fold ([y 0][max-w 0][total-h 0])
+                (define-values (final-y max-width)
+                  (for/fold ([y 0][max-w 0])
                             ([s (in-list (string-split text "\n"))])
                     (send dc set-font t-font)
                     (send dc set-text-foreground "black")
@@ -344,14 +343,16 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                       (send dc set-text-foreground "darkgreen"))
                     (define-values (w h d a) (send dc get-text-extent s))
                     (send dc draw-text s 0 y #t)
-                    (define h+ (+ h GAP))
-                    (values (+ y h+) (max max-w w) (+ total-h h+))))
-                (unless scrollbars-already-set
+                    (values (+ y h GAP) (max max-w w))))
+
+
+                (unless (eq? pinned-trace prev-pinned-trace)
                   (send c init-auto-scrollbars
                         (->int max-width)
-                        (->int total-height)
+                        (->int (+ final-y GAP))
                         0 0)
-                  (set! scrollbars-already-set #t)))))]))
+
+                  (set! prev-pinned-trace pinned-trace)))))]))
 
   (define infobox
     (new text-field%
