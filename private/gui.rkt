@@ -26,9 +26,12 @@
   (define-values (jit-counts labeled-counts)
     (process-jit-counts jit-count-lines))
 
+  (define no-count? (null? jit-count-lines))
+
   (define traces
     (pick-most-used-traces trace-candidates
-                           jit-counts labeled-counts 20))
+                           jit-counts labeled-counts 20
+                           no-count?))
 
   (define bridges (pick-bridges-for traces bridge-candidates))
 
@@ -76,9 +79,11 @@
   (define display-bounds-ht ; display locations for traces and bridges
     (let ()
       (define sorted-traces
-        (sort traces (lambda (t1 t2)
-                       (< (trace-use-count t1)
-                          (trace-use-count t2)))))
+        (if no-count?
+            traces
+            (sort traces (lambda (t1 t2)
+                           (< (trace-use-count t1)
+                              (trace-use-count t2))))))
       (define-values (new-ht y-entry-next y-trace-next)
         (for/fold ([ht (hash)]
                    [y-entry y-init]
@@ -358,12 +363,14 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
     (if (trace? pinned-trace)
         (let ()
           (define msg
-            (if (trace-inner-loop pinned-trace)
-                (format "Run ~a / ~a times"
-                        (hash-ref labeled-counts (trace-label pinned-trace) #f)
-                        (hash-ref labeled-counts (trace-label (trace-inner-loop pinned-trace)) #f))
-                (format "Run ~a times"
-                        (hash-ref labeled-counts (trace-label pinned-trace) #f))))
+            (if no-count?
+                "No count info in the input file"
+                (if (trace-inner-loop pinned-trace)
+                    (format "Run ~a / ~a times"
+                            (hash-ref labeled-counts (trace-label pinned-trace) #f)
+                            (hash-ref labeled-counts (trace-label (trace-inner-loop pinned-trace)) #f))
+                    (format "Run ~a times"
+                            (hash-ref labeled-counts (trace-label pinned-trace) #f)))))
           (send below-message set-label msg))
         (send below-message set-label "")))
 

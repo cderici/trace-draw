@@ -23,20 +23,22 @@
     [else line-str]))
 
 ;; (listof trace-candidates) jit-counts number -> (listof traces)
-(define (pick-most-used-traces candidates jit-counts lbl->counts n)
-  ;; ASSUMES : jit-counts doesn't contain duplicate counts
-  ;; (i.e. no two traces that are used the same many times) (cross-fingers)
-  (define l (hash-count jit-counts))
-  (define chosen-counts (take (sort (hash-keys jit-counts) >) (min n l)))
-  (define chosen-labels (for/hash ([c (in-list chosen-counts)])
-                          (values c (hash-ref jit-counts c))))
-  (for/fold ([traces null])
-            ([(lbls lines) (in-hash candidates)])
-    (or (for/or ([(cnt cl) (in-hash chosen-labels)])
-          (for/or ([l (in-list lbls)])
-            (and (equal? cl l)
-                 (cons (process-trace-lines lines lbl->counts) traces))))
-        traces)))
+(define (pick-most-used-traces candidates jit-counts lbl->counts n [no-count-info #f])
+  (if no-count-info
+      (map (lambda (c) (process-trace-lines c lbl->counts)) (hash-values candidates))
+      ;; ASSUMES : jit-counts doesn't contain duplicate counts
+      ;; (i.e. no two traces that are used the same many times) (cross-fingers)
+      (let* ([l (hash-count jit-counts)]
+             [chosen-counts (take (sort (hash-keys jit-counts) >) (min n l))]
+             [chosen-labels (for/hash ([c (in-list chosen-counts)])
+                              (values c (hash-ref jit-counts c)))])
+        (for/fold ([traces null])
+                  ([(lbls lines) (in-hash candidates)])
+          (or (for/or ([(cnt cl) (in-hash chosen-labels)])
+                (for/or ([l (in-list lbls)])
+                  (and (equal? cl l)
+                       (cons (process-trace-lines lines lbl->counts) traces))))
+              traces)))))
 
 (define (pick-bridges-for traces bridge-candidates)
   (define processed (make-hash))
@@ -228,7 +230,7 @@
                   #t
                   #f
                   racket-code
-                  (hash-ref lbl->counts outer-label)
+                  (hash-ref lbl->counts outer-label -1)
                   ordered-outer-guards
                   jump
                   (string-join ordered-outer-code "\n"))
@@ -239,7 +241,7 @@
                                          #f
                                          #f
                                          #f
-                                         (hash-ref lbl->counts inner-label)
+                                         (hash-ref lbl->counts inner-label -1)
                                          ordered-inner-guards
                                          jump
                                          (string-join ordered-inner-code "\n")))])
@@ -248,7 +250,7 @@
                     #f
                     maybe-inner
                     racket-code
-                    (hash-ref lbl->counts outer-label)
+                    (hash-ref lbl->counts outer-label -1)
                     ordered-outer-guards
                     jump
                     (string-join (append ordered-outer-code ordered-inner-code) "\n")))))
