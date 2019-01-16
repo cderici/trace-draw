@@ -325,7 +325,8 @@
                       (send dc set-text-foreground "darkgreen"))
                     (define-values (w h d a) (send dc get-text-extent s))
                     (send dc draw-text s 0 y #t)
-                    (values (+ y h) (max max-w w) (+ total-h h))))
+                    (define h+ (+ h GAP))
+                    (values (+ y h+) (max max-w w) (+ total-h h+))))
                 (unless scrollbars-already-set
                   (send c init-auto-scrollbars
                         (->int max-width)
