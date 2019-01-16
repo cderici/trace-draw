@@ -10,26 +10,12 @@
 
 (provide read-all)
 
-(define (read-all trace-file)
+(define (init-gui trace-file)
   ;; Gather meta information (e.g. # of lines in the file)
   (define wc-output (with-output-to-string (lambda () (system (format "wc ~a" trace-file)))))
   (define number-of-lines (string->number (car (string-split (string-trim wc-output) " "))))
 
-  (define all-loops null)
-  (define all-bridges null)
-  (define jit-summary-lines null)
-  (define jit-backend-count-lines null)
-
-  (define record-loop #f)
-  (define record-bridge #f)
-  (define record-summary #f)
-  (define record-counts #f)
-
-  (define current-loop-lines null)
-  (define current-bridge-lines null)
-  (define current-summary-lines null)
-  (define current-backend-count-lines null)
-
+  ;; FEEDBACK LOADING GUI
   (eprintf "Starting to work on file : ~a ... " trace-file)
   (define load-w 400)
   (define load-h 100)
@@ -50,6 +36,25 @@
   (send loading center 'both)
   (send loading show #t)
   (send status-bar set-value 0)
+  (values status-bar loading))
+
+(define (read-all trace-file)
+  (define-values (status-bar loading) (init-gui trace-file))
+  ;; MAIN INITIAL LOOP
+  (define all-loops null)
+  (define all-bridges null)
+  (define jit-summary-lines null)
+  (define jit-backend-count-lines null)
+
+  (define record-loop #f)
+  (define record-bridge #f)
+  (define record-summary #f)
+  (define record-counts #f)
+
+  (define current-loop-lines null)
+  (define current-bridge-lines null)
+  (define current-summary-lines null)
+  (define current-backend-count-lines null)
 
   (with-input-from-file trace-file
     (lambda ()
