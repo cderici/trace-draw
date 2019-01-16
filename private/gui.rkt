@@ -358,5 +358,6 @@
           (send below-message set-label msg))
         (send below-message set-label "")))
 
+  (send f center 'both)
   (send f show #t)
   )
