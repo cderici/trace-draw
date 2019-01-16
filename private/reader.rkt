@@ -70,33 +70,38 @@
           (set! record-counts #t))
 
         ;; enter recording a loop/bridge/summary
-        (when (regexp-match #rx"[[0-9a-zA-Z]+] {jit-log-opt-loop" ln)
-          (set! start-rec-loop? #t))
-        (when (regexp-match #rx"[[0-9a-zA-Z]+] {jit-log-opt-bridge" ln)
-          (set! start-rec-bridge? #t))
-        (when (regexp-match #rx"[[0-9a-zA-Z]+] {jit-summary" ln)
-          (set! start-rec-summary? #t))
-        (when (regexp-match #rx"[[0-9a-zA-Z]+] {jit-backend-counts" ln)
-          (set! start-rec-counts? #t))
+        (when (and (not (or start-rec-loop?
+                            start-rec-bridge?
+                            start-rec-summary?
+                            start-rec-counts?)) ; there's no nesting
+                   (regexp-match #rx"[[0-9a-zA-Z]+] {jit" ln))
+          (when (string-contains? ln "-log-opt-loop")
+            (set! start-rec-loop? #t))
+          (when (string-contains? ln "-log-opt-bridge")
+            (set! start-rec-bridge? #t))
+          (when (string-contains? ln "-summary")
+            (set! start-rec-summary? #t))
+          (when (string-contains? ln "-backend-counts")
+            (set! start-rec-counts? #t)))
 
         ;; exit recording loop/bridge/summary
         (when (and record-counts
-                   (regexp-match #rx"[[0-9a-zA-Z]+] jit-backend-counts}" ln))
+                   (string-contains? ln " jit-backend-counts}"))
           (set! start-rec-counts? #f)(set! record-counts #f)
           (set! jit-backend-count-lines (reverse current-backend-count-lines))
           (set! current-backend-count-lines null))
         (when (and record-summary
-                   (regexp-match #rx"[[0-9a-zA-Z]+] jit-summary}" ln))
+                   (string-contains? ln " jit-summary}"))
           (set! start-rec-summary? #f)(set! record-summary #f)
           (set! jit-summary-lines (reverse current-summary-lines))
           (set! current-summary-lines null))
         (when (and record-loop
-                   (regexp-match #rx"[[0-9a-zA-Z]+] jit-log-opt-loop}" ln))
+                   (string-contains? ln " jit-log-opt-loop}"))
           (set! start-rec-loop? #f)(set! record-loop #f)
           (set! all-loops (cons (reverse current-loop-lines) all-loops))
           (set! current-loop-lines null))
         (when (and record-bridge
-                   (regexp-match #rx"[[0-9a-zA-Z]+] jit-log-opt-bridge}" ln))
+                   (string-contains? ln " jit-log-opt-bridge}"))
           (set! start-rec-bridge? #f)(set! record-bridge #f)
           (set! all-bridges (cons (reverse current-bridge-lines) all-bridges))
           (set! current-bridge-lines null))
