@@ -54,8 +54,8 @@
 
   (define f (new frame%
                  [label "Trace Draw"]
-                 [width (- screen-w 400)]
-                 [height (- screen-h 400)]))
+                 [width (- screen-w 100)]
+                 [height (- screen-h 100)]))
 
   (define main-panel
     (new vertical-panel%
@@ -293,7 +293,7 @@
         0.0 0.0)
 
   (define summary
-    (let ([from-log-file (string-join jit-summary "\n")])
+    (let ([from-log-file (string-join (map string-trim jit-summary) "\n")])
       (if (null? jit-summary)
           (format "No jit-summary is provided in the input : \"~a\"
 
@@ -304,8 +304,8 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                       [choices (list "Summary" "Trace Codes")]
                       [parent panel]
                       [alignment '(right top)]
-                      [stretchable-width #f]
-                      [min-width 500]
+                      [stretchable-width #t]
+                      #;[min-width (/ total-w 2)]
                       [callback (lambda (b e)
                                   (if
                                    (= (send b get-selection) 0)
@@ -323,6 +323,8 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
   (define trace-info-canvas
     (new canvas%
          [parent vpanel]
+         [stretchable-width #t]
+         [style '(hscroll vscroll deleted)]
          [paint-callback
           (lambda (c dc)
             (when pinned-trace
@@ -349,10 +351,7 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                         (->int max-width)
                         (->int total-height)
                         0 0)
-                  (set! scrollbars-already-set #t))
-
-                )))]
-         [style '(hscroll vscroll deleted)]))
+                  (set! scrollbars-already-set #t)))))]))
 
   (define infobox
     (new text-field%

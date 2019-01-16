@@ -4,7 +4,7 @@
 (provide (all-defined-out))
 
 (define FONT-SIZE 9)
-(define T-FONT-SIZE 10)
+(define T-FONT-SIZE 12)
 (define SPACE-SIZE 10)
 (define SEP-SIZE FONT-SIZE)
 (define MARGIN FONT-SIZE)
@@ -26,7 +26,7 @@
   (make-font #:face face #:size FONT-SIZE #:weight 'bold #:size-in-pixels? #t))
 
 (define summary-font
-  (make-font #:face face #:size 15 #:size-in-pixels? #t))
+  (make-font #:face face #:size 14 #:size-in-pixels? #t))
 
 (define font (make-font #:face face #:size FONT-SIZE #:size-in-pixels? #t))
 (define t-font (make-font #:face face #:size T-FONT-SIZE #:size-in-pixels? #t))
