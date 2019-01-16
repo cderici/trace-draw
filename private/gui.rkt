@@ -176,8 +176,8 @@
                                               (send e get-other-shift-key-code)
                                               (send e get-other-altgr-key-code))])
                        (case key-code
-                         [(wheel-up up) (adjust-scale 1/20) #t]
-                         [(wheel-down down) (adjust-scale -1/20) #t]
+                         [(wheel-up up) (adjust-scroll 0 -1) #t]
+                         [(wheel-down down) (adjust-scroll 0 1) #t]
                          [(wheel-left left) (adjust-scroll -1 0) #t]
                          [(wheel-right right) (adjust-scroll 1 0) #t]
                          [(#\+) (adjust-scale 1/10) #t]
@@ -197,12 +197,17 @@
                      (define mouse-y (send e get-y))
                      (when (and (send e dragging?)
                                 (send e get-left-down))
+                       (define hor-dir (if (> mouse-x prev-mouse-x) 'right 'left))
+                       (define ver-dir (if (> mouse-y prev-mouse-y) 'down 'up))
+
                        (when (or (> (abs (- mouse-x prev-mouse-x)) 20)
                                  (> (abs (- mouse-y prev-mouse-y)) 20))
                          (reset-mouse))
                        (unless (= prev-mouse-x -1)
-                         (adjust-scroll (/ (- prev-mouse-x mouse-x) 8)
-                                        (/ (- prev-mouse-y mouse-y) 8)))
+                         (when (or (equal? hor-dir 'right) (equal? ver-dir 'down))
+                           (adjust-scale 1/20))
+                         (when (or (equal? hor-dir 'left) (equal? ver-dir 'up))
+                           (adjust-scale -1/20)))
                        (set! prev-mouse-x mouse-x)
                        (set! prev-mouse-y mouse-y))
 
