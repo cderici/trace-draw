@@ -1,8 +1,11 @@
 #lang racket/base
 
 (require racket/string
-         racket/system 
-         racket/port)
+         racket/system
+         racket/port
+
+         racket/class
+         racket/gui/base)
 
 
 (provide read-all)
@@ -10,7 +13,7 @@
 (define (read-all trace-file)
   ;; Gather meta information (e.g. # of lines in the file)
   (define wc-output (with-output-to-string (lambda () (system (format "wc ~a" trace-file)))))
-  (define number-of-lines (string->number (car (string-split wc-output " "))))
+  (define number-of-lines (string->number (car (string-split (string-trim wc-output) " "))))
 
   (define all-loops null)
   (define all-bridges null)
@@ -33,11 +36,25 @@
   (define current-backend-count-lines null)
 
   (eprintf "Starting to work on file : ~a ... " trace-file)
-  (define current-line-number 0)
+  (define load-w 400)
+  (define load-h 100)
+  (define loading (new frame% [label "Trace Draw"][width load-w][height load-h][border 50]))
+  (define status-panel (new vertical-panel%
+                            [parent loading]
+                            [spacing 30]
+                            [alignment '(center center)]))
+  (define msg (new message% [label (format "Loading : ~a" trace-file)][parent status-panel]))
+  (define status-bar (new gauge% [label #f]
+                          [parent status-panel]
+                          [range number-of-lines]
+                          [style '(horizontal vertical-label)]))
+  (send loading center 'both)
+  (send loading show #t)
+  (send status-bar set-value 0)
+
   (with-input-from-file trace-file
     (lambda ()
       (for ([ln (in-lines)])
-        (set! current-line-number (add1 current-line-number))
         ;; these starts are to jump over the first line
         (when start-rec-loop?
           (set! record-loop #t))
@@ -90,14 +107,16 @@
         (when record-counts
           (set! current-backend-count-lines (cons ln current-backend-count-lines)))
 
+        (send status-bar set-value (add1 (send status-bar get-value)))
         ))
     )
+  (send loading show #f)
   (eprintf "DONE ...\n")
 
   (define ordered-loop-lines (reverse all-loops))
   (define ordered-bridge-lines (reverse all-bridges))
 
-  (values ordered-loop-lines 
+  (values ordered-loop-lines
           ordered-bridge-lines
           jit-summary-lines
           jit-backend-count-lines))
