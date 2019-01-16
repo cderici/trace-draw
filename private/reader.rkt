@@ -25,11 +25,6 @@
   (define record-summary #f)
   (define record-counts #f)
 
-  (define start-rec-loop? #f)
-  (define start-rec-bridge? #f)
-  (define start-rec-summary? #f)
-  (define start-rec-counts? #f)
-
   (define current-loop-lines null)
   (define current-bridge-lines null)
   (define current-summary-lines null)
@@ -59,54 +54,22 @@
   (with-input-from-file trace-file
     (lambda ()
       (for ([ln (in-lines)])
-        ;; these starts are to jump over the first line
-        (when start-rec-loop?
-          (set! record-loop #t))
-        (when start-rec-bridge?
-          (set! record-bridge #t))
-        (when start-rec-summary?
-          (set! record-summary #t))
-        (when start-rec-counts?
-          (set! record-counts #t))
-
         ;; enter recording a loop/bridge/summary
-        (when (and (not (or start-rec-loop?
-                            start-rec-bridge?
-                            start-rec-summary?
-                            start-rec-counts?)) ; there's no nesting
+        (when (and (not (or record-loop
+                            record-bridge
+                            record-summary
+                            record-counts)) ; no nesting in the log
                    (regexp-match #rx"[[0-9a-zA-Z]+] {jit" ln))
           (when (string-contains? ln "-log-opt-loop")
-            (set! start-rec-loop? #t))
+            (set! record-loop #t))
           (when (string-contains? ln "-log-opt-bridge")
-            (set! start-rec-bridge? #t))
+            (set! record-bridge #t))
           (when (string-contains? ln "-summary")
-            (set! start-rec-summary? #t))
+            (set! record-summary #t))
           (when (string-contains? ln "-backend-counts")
-            (set! start-rec-counts? #t)))
+            (set! record-counts #t)))
 
-        ;; exit recording loop/bridge/summary
-        (when (and record-counts
-                   (string-contains? ln " jit-backend-counts}"))
-          (set! start-rec-counts? #f)(set! record-counts #f)
-          (set! jit-backend-count-lines (reverse current-backend-count-lines))
-          (set! current-backend-count-lines null))
-        (when (and record-summary
-                   (string-contains? ln " jit-summary}"))
-          (set! start-rec-summary? #f)(set! record-summary #f)
-          (set! jit-summary-lines (reverse current-summary-lines))
-          (set! current-summary-lines null))
-        (when (and record-loop
-                   (string-contains? ln " jit-log-opt-loop}"))
-          (set! start-rec-loop? #f)(set! record-loop #f)
-          (set! all-loops (cons (reverse current-loop-lines) all-loops))
-          (set! current-loop-lines null))
-        (when (and record-bridge
-                   (string-contains? ln " jit-log-opt-bridge}"))
-          (set! start-rec-bridge? #f)(set! record-bridge #f)
-          (set! all-bridges (cons (reverse current-bridge-lines) all-bridges))
-          (set! current-bridge-lines null))
-
-        ;; record
+        ;; record the line
         (when record-loop
           (set! current-loop-lines (cons ln current-loop-lines)))
         (when record-bridge
@@ -116,6 +79,33 @@
         (when record-counts
           (set! current-backend-count-lines (cons ln current-backend-count-lines)))
 
+        ;; exit recording loop/bridge/summary
+        (when (and record-counts
+                   (string-contains? ln " jit-backend-counts}"))
+          (set! record-counts #f)
+          (set! jit-backend-count-lines (cdr (reverse (cdr current-backend-count-lines))))
+          (set! current-backend-count-lines null))
+        (when (and record-summary
+                   (string-contains? ln " jit-summary}"))
+          (set! record-summary #f)
+          (set! jit-summary-lines (cdr (reverse (cdr current-summary-lines))))
+          (set! current-summary-lines null))
+        ;; (cdr (reverse (cdr pattern is for
+        ;; removing the first and the last two lines when taking reverse
+        ;; e.g.
+        ;; [3e4c1616dbff0e8] {jit-log-opt-loop
+        ;; +592: --end of the loop--
+        ;; [3e4c1616dc9dc53] jit-log-opt-loop}
+        (when (and record-loop
+                   (string-contains? ln " jit-log-opt-loop}"))
+          (set! record-loop #f)
+          (set! all-loops (cons (cdr (reverse (cddr current-loop-lines))) all-loops))
+          (set! current-loop-lines null))
+        (when (and record-bridge
+                   (string-contains? ln " jit-log-opt-bridge}"))
+          (set! record-bridge #f)
+          (set! all-bridges (cons (cdr (reverse (cddr current-bridge-lines))) all-bridges))
+          (set! current-bridge-lines null))
         (send status-bar set-value (add1 (send status-bar get-value))))))
 
   (send loading show #f)
