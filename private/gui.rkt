@@ -355,7 +355,6 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                     [(wheel-right right) (adjust-scroll scroll-speed 0) #t]
                     [else #f]))))
            )
-         ;(new canvas%
          [parent vpanel]
          [stretchable-width #t]
          [style '(hscroll vscroll deleted)]

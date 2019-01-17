@@ -224,19 +224,9 @@
   (define ordered-outer-code (reverse outer-code))
   (define ordered-inner-code (reverse inner-code))
 
-  (if is-entry-bridge?
-      (make-trace outer-label
-                  outer-label-line
-                  #t
-                  #f
-                  racket-code
-                  (hash-ref lbl->counts outer-label -1)
-                  ordered-outer-guards
-                  jump
-                  (string-join ordered-outer-code "\n"))
-      (let ([maybe-inner (if (not inner-label)
-                             #f
-                             (make-trace inner-label
+  (let ([maybe-inner (if (not inner-label)
+                         #f
+                         (make-trace inner-label
                                          inner-label-line
                                          #f
                                          #f
@@ -245,15 +235,15 @@
                                          ordered-inner-guards
                                          jump
                                          (string-join ordered-inner-code "\n")))])
-        (make-trace outer-label
-                    outer-label-line
-                    #f
-                    maybe-inner
-                    racket-code
-                    (hash-ref lbl->counts outer-label -1)
-                    ordered-outer-guards
-                    jump
-                    (string-join (append ordered-outer-code ordered-inner-code) "\n")))))
+    (make-trace outer-label
+                outer-label-line
+                is-entry-bridge?
+                maybe-inner
+                racket-code
+                (hash-ref lbl->counts outer-label -1)
+                ordered-outer-guards
+                jump
+                (string-join (append ordered-outer-code ordered-inner-code) "\n"))))
 
 (define (get-bridge-guard-id line-str)
   (let* ([second-part (cadr (string-split line-str "Guard "))])
