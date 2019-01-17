@@ -175,10 +175,16 @@
        (send dc draw-text s 0 y #t)
        (values (+ y h GAP) w))]
     [(param-tline? tline)
-     (let ([s "heleloy param"])
-       (define-values (w h d a) (send dc get-text-extent s))
-       (send dc draw-text s 0 y #t)
-       (values (+ y h GAP) w))]
+     (define-values (w h d a) (send dc get-text-extent "["))
+     (send dc draw-text "[" 0 y #t)
+     (define wp
+       (for/fold ([w (+ w GAP)])
+                 ([p (in-list (param-tline-params tline))])
+         (define-values (wp hp dp ap) (send dc get-text-extent p))
+         (send dc draw-text p w y #t)
+         (+ w wp 10)))
+     (send dc draw-text "]" wp y #t)
+     (values (+ y h GAP) (+ wp 20))]
     [(debug-merge-point? tline)
      (let ([s "debug-merge-point ---------"])
        (define-values (w h d a) (send dc get-text-extent s))
