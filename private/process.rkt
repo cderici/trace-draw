@@ -149,75 +149,78 @@
                  (hash-set lbl->count lbl cnt)))]
       [else (values count->lbl lbl->count)])))
 
+(define (process-trace-internals trace-lines-str [for-a-bridge? #f])
+  (for/fold ([is-entry-bridge? #f]
+             [outer-label #f]
+             [inner-label #f]
+             [jump #f]
+             [are-we-in-inner-loop #f]
+             [outer-code null]
+             [inner-code null]
+             [outer-guards null]
+             [inner-guards null])
+            ([line-str (in-list trace-lines-str)])
+    ;; figure out the line
+    (define tline
+      (cond
+        ;; info-tline
+        [(char=? (string-ref line-str 0) #\#) (make-info-tline line-str)]
+        ;; param-tline
+        [(char=? (string-ref line-str 0) #\[)
+         (make-param-tline (string-split
+                            (substring line-str 1 (sub1 (string-length line-str)))
+                            ", "))]
+        ;; debug-merge-point
+        [(string-contains? line-str "debug_merge_point")
+         (make-debug-merge-point (car (string-split (cadr (string-split line-str ", '")) "')")))]
+        ;; guard-tline
+        [(string-contains? line-str " guard_") (extract-guard line-str)]
+        ;; assignment-tline
+        [(string-contains? line-str " = ")
+         (let ([lhs (string-trim (car (regexp-match #px" [\\w]+ " line-str)))]
+               [op (let ([o (regexp-match* #px"[\\w]+" line-str)]) (and o (list-ref o 2)))]
+               [args (let ([a (regexp-match #px"\\(.*\\)" line-str)])
+                       (and a (substring (car a) 1 (sub1 (string-length (car a))))))])
+           (make-assignment-tline lhs op args))]
+        ;; operation-t-line
+        [(regexp-match #px"[\\w]+\\(.*\\)" line-str)
+         => (lambda (ln) (and ln
+                              (let ([op (let ([o (regexp-match #px"[\\w]+" (car ln))])
+                                          (and o (car o)))]
+                                    [args (let ([a (regexp-match #px"\\(.*\\)" line-str)])
+                                            (and a (substring (car a) 1 (sub1 (string-length (car a))))))])
+                                (make-operation-tline op args))))]
+        [else (error 'trace-line
+                     (format "couldn't recognize this line :\n~a\n" line-str))]))
+
+    ;; adjust parameters and go on
+    (values (or is-entry-bridge? (and (info-tline? tline) (string-contains? line-str "entry bridge")))
+            (or outer-label (or (and (not for-a-bridge?)
+                                     (not are-we-in-inner-loop)
+                                     (or (and (is-label? tline)
+                                              (get-label-id line-str))
+                                         (and (is-entry-bridge-label? tline)
+                                              (get-entry-bridge-label-id line-str))))
+                                (and for-a-bridge?
+                                     (is-bridge-label? tline)
+                                     (get-bridge-guard-id line-str))))
+            (or inner-label (and outer-label (is-label? tline) (get-label-id line-str)))
+            (or jump (and (is-jump? tline) (get-jump-info line-str)))
+            (or are-we-in-inner-loop (and outer-label (is-label? tline)))
+            (or (and (not are-we-in-inner-loop) (cons tline outer-code)) outer-code)
+            (or (and are-we-in-inner-loop (cons tline inner-code)) inner-code)
+            (or (and (not are-we-in-inner-loop) (guard? tline) (cons tline outer-guards)) outer-guards)
+            (or (and are-we-in-inner-loop (guard? tline) (cons tline inner-guards)) inner-guards))))
+
 ;; (listof string) -> trace
 ;; ASSUMES : entry bridges never contain labels (noone jumps to them)
 ;; ASSUMES : a trace never contains more than 2 "label"s (one for peeled and one for main)
 (define (process-trace-lines trace-lines-str lbl->counts)
   ;; let's try to make it in a single pass
 
-  (define is-entry-bridge? #f)
-  (define outer-label #f)
-  (define outer-label-line #f)
-  (define inner-label #f)
-  (define inner-label-line #f)
-  (define are-we-in-inner-loop #f)
-
-  (define outer-code null)
-  (define inner-code null)
-
-  (define outer-guards null)
-  (define inner-guards null)
-
-  (define jump #f)
-
-  (define already-processed #f)
-  (define racket-code #f)
-
-  (for ([line-str (in-list trace-lines-str)])
-    (set! already-processed #f)
-
-    (when (and (not outer-label) (not is-entry-bridge?) (string-contains? line-str "entry bridge"))
-      (set! is-entry-bridge? #t)
-      (set! already-processed #t)
-      (let* ((splt (string-split line-str " "))
-               (n-str (list-ref splt 2)))
-          (unless (string->number n-str)
-            (error (format
-                    "couldn't get the loop number from : ~a\n"
-                    line-str)))
-          (set! outer-label (string-append "Loop " n-str)))
-      (set! outer-label-line line-str)
-      (set! racket-code line-str))
-
-    (when (and (not racket-code) (string-contains? line-str "# Loop "))
-      (set! racket-code line-str))
-
-    (when (and (not is-entry-bridge?) outer-label (not inner-label) (string-contains? line-str "label("))
-      (set! inner-label (get-label-id line-str))
-      (set! are-we-in-inner-loop #t)
-      (set! inner-label-line line-str)
-      (set! already-processed #t))
-
-    (when (and (not is-entry-bridge?) (not outer-label) (string-contains? line-str "label("))
-      (set! outer-label (get-label-id line-str))
-      (set! already-processed #t)
-      (set! outer-label-line line-str))
-
-    (when (and (not already-processed) (string-contains? line-str " guard_"))
-      (let ([guard-info (get-guard-info line-str)])
-        (if are-we-in-inner-loop
-            (set! inner-guards (cons guard-info inner-guards))
-            (set! outer-guards (cons guard-info outer-guards)))))
-
-    (when (and (not already-processed) (not jump) (string-contains? line-str " jump("))
-      (set! jump (get-jump-info line-str)))
-
-    (define clean-line-str (clear-trace-code-line line-str))
-
-    (cond
-      [are-we-in-inner-loop (set! inner-code (cons clean-line-str inner-code))]
-      [else (set! outer-code (cons clean-line-str outer-code))])
-    )
+  (define-values
+    (is-entry-bridge? outer-label inner-label jump are-we-in-inner-loop outer-code inner-code outer-guards inner-guards)
+    (process-trace-internals trace-lines-str))
 
   (define ordered-outer-guards (reverse outer-guards))
   (define ordered-inner-guards (reverse inner-guards))
@@ -254,33 +257,11 @@
 ;; ASSUMES : bridges don't contain inner loops
 (define (process-bridge-lines trace-lines-str)
 
-  (define guard-id #f)
-  (define id-line #f)
-  (define guards null)
-  (define jump #f)
-  (define code null)
-
-  (for ([line-str (in-list trace-lines-str)])
-
-    (when (and (not guard-id) (string-contains? line-str "bridge out of Guard "))
-      (set! guard-id (get-bridge-guard-id line-str))
-      (set! id-line line-str))
-
-    (when (string-contains? line-str " guard_")
-      (let ([guard-info (get-guard-info line-str)])
-        (set! guards (cons guard-info guards))))
-
-    (when (and (not jump) (string-contains? line-str " jump("))
-      (set! jump (get-jump-info line-str)))
-
-    (define clean-line-str (clear-trace-code-line line-str))
-
-    (set! code (cons clean-line-str code))
-
-    )
+  (define-values (_ label __ jump ___ code ____ guards _____)
+    (process-trace-internals trace-lines-str #t))
 
   (define ordered-guards (reverse guards))
   (define ordered-code (reverse code))
 
-  (make-bridge guard-id id-line ordered-guards -1 jump (string-join ordered-code "\n"))
+  (make-bridge label ordered-guards -1 ordered-code jump)
   )
