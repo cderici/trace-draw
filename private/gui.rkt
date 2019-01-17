@@ -176,10 +176,10 @@
                                               (send e get-other-shift-key-code)
                                               (send e get-other-altgr-key-code))])
                        (case key-code
-                         [(wheel-up up) (adjust-scroll 0 -1) #t]
-                         [(wheel-down down) (adjust-scroll 0 1) #t]
-                         [(wheel-left left) (adjust-scroll -1 0) #t]
-                         [(wheel-right right) (adjust-scroll 1 0) #t]
+                         [(wheel-up up) (adjust-scroll 0 (- scroll-speed)) #t]
+                         [(wheel-down down) (adjust-scroll 0 scroll-speed) #t]
+                         [(wheel-left left) (adjust-scroll (- scroll-speed) 0) #t]
+                         [(wheel-right right) (adjust-scroll scroll-speed 0) #t]
                          [(#\+) (adjust-scale 1/10) #t]
                          [(#\-) (adjust-scale -1/10) #t]
                          [else #f])))
@@ -319,8 +319,43 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                      (send vpanel add-child trace-info-canvas))))]))
 
   (define prev-pinned-trace #f)
+  (define trace-w #f)
+  (define trace-h #f)
+
   (define trace-info-canvas
-    (new canvas%
+    (new (class canvas%
+           (super-new)
+           (inherit refresh
+                    get-view-start
+                    get-client-size
+                    scroll
+                    init-auto-scrollbars)
+           (define/private (adjust-scroll dx dy)
+             (define-values (w h) (get-client-size))
+             (define-values (x y) (get-view-start))
+             (define adj-w (- (* view-scale trace-w) w))
+             (define adj-h (- (* view-scale trace-h) h))
+             (define sx (min 1 (max 0 (+ (* dx 1/40) (/ x adj-w)))))
+             (define sy (min 1 (max 0 (+ (* dy 1/40) (/ y adj-h)))))
+             (define tx (and (not (= x (* sx adj-w)))
+                             sx))
+             (define ty (and (not (= y (* sy adj-h)))
+                             sy))
+             (when (or tx ty)
+               (scroll tx ty)))
+         (define/override (on-char e)
+           (for/or ([key-code (list (send e get-key-code)
+                                    (send e get-other-shift-key-code)
+                                    (send e get-other-altgr-key-code))])
+             (and trace-h
+                  (case key-code
+                    [(wheel-up up) (adjust-scroll 0 (- scroll-speed)) #t]
+                    [(wheel-down down) (adjust-scroll 0 scroll-speed) #t]
+                    [(wheel-left left) (adjust-scroll (- scroll-speed) 0) #t]
+                    [(wheel-right right) (adjust-scroll scroll-speed 0) #t]
+                    [else #f]))))
+           )
+         ;(new canvas%
          [parent vpanel]
          [stretchable-width #t]
          [style '(hscroll vscroll deleted)]
@@ -351,7 +386,8 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                         (->int max-width)
                         (->int (+ final-y GAP))
                         0 0)
-
+                  (set! trace-w max-width)
+                  (set! trace-h final-y)
                   (set! prev-pinned-trace pinned-trace)))))]))
 
   (define infobox

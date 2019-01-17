@@ -20,6 +20,8 @@
 (define TGAP (* 2 GAP))
 (define X-GAP (* 3 t-width))
 (define Y-GAP (* 2 GAP))
+(define scroll-speed 2)
+
 
 (define face "Helvetica")
 (define trace-title-font
