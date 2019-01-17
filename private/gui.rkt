@@ -361,12 +361,16 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
          [paint-callback
           (lambda (c dc)
             (when pinned-trace
-              (let ([text (if (trace? pinned-trace)
-                              (trace-text pinned-trace)
-                              (bridge-text pinned-trace))])
+              (let ([codes (if (trace? pinned-trace)
+                               (trace-code pinned-trace)
+                               (bridge-code pinned-trace))])
                 (define-values (final-y max-width)
                   (for/fold ([y 0][max-w 0])
-                            ([s (in-list (string-split text "\n"))])
+                            ([tline (in-list codes)])
+                    (define-values (new-y new-w)
+                      (render-tline dc tline y))
+                    (values new-y (max max-w new-w))
+                    #|
                     (send dc set-font t-font)
                     (send dc set-text-foreground "black")
                     (when (string-contains? s " guard_")
@@ -377,7 +381,9 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                       (send dc set-text-foreground "darkgreen"))
                     (define-values (w h d a) (send dc get-text-extent s))
                     (send dc draw-text s 0 y #t)
-                    (values (+ y h GAP) (max max-w w))))
+                    (values (+ y h GAP) (max max-w w))
+                    |#
+                    ))
 
 
                 (unless (eq? pinned-trace prev-pinned-trace)

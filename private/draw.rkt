@@ -6,7 +6,7 @@
          "config.rkt"
          "struct.rkt")
 
-(provide draw-all)
+(provide draw-all render-tline)
 
 (define (connect dc source-bounds self? is-target-inner? target-bounds
                  [right-to-left? #f][hilite? #f])
@@ -163,8 +163,45 @@
              (hash-has-key? inner-loop-of target-bounds)
              target-bounds
              #t
-             (is-hilite? (bridge-guard-id b) (bridge-jump-target b))))
-  )
+             (is-hilite? (bridge-guard-id b) (bridge-jump-target b)))))
+
+(define (render-tline dc tline y)
+  (send dc set-font t-font)
+  (send dc set-text-foreground "black")
+  (cond
+    [(info-tline? tline)
+     (let ([s (info-tline-line-str tline)])
+       (define-values (w h d a) (send dc get-text-extent s))
+       (send dc draw-text s 0 y #t)
+       (values (+ y h GAP) w))]
+    [(param-tline? tline)
+     (let ([s "heleloy param"])
+       (define-values (w h d a) (send dc get-text-extent s))
+       (send dc draw-text s 0 y #t)
+       (values (+ y h GAP) w))]
+    [(debug-merge-point? tline)
+     (let ([s "debug-merge-point ---------"])
+       (define-values (w h d a) (send dc get-text-extent s))
+       (send dc draw-text s 0 y #t)
+       (values (+ y h GAP) w))]
+    [(guard? tline)
+     (let ([s "guard guard guard guard"])
+       (define-values (w h d a) (send dc get-text-extent s))
+       (send dc draw-text s 0 y #t)
+       (values (+ y h GAP) w))]
+    [(assignment-tline? tline)
+     (let ([s "4 = 2 + 2"])
+       (define-values (w h d a) (send dc get-text-extent s))
+       (send dc draw-text s 0 y #t)
+       (values (+ y h GAP) w))]
+    [(operation-tline? tline)
+     (let ([s "operation cwal"])
+       (define-values (w h d a) (send dc get-text-extent s))
+       (send dc draw-text s 0 y #t)
+       (values (+ y h GAP) w))]
+    [else
+     (error 'render-tline (format "this is not a tline : ~a\n" tline))]))
+
 
 ;;;; MAIN DRAW
 

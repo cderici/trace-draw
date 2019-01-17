@@ -74,14 +74,29 @@
       (set! entry-bridge-count (add1 entry-bridge-count))
       new-id)))
 
+(define (get-entry-bridge-label-id line-str)
+  (let* ((splt (string-split line-str " "))
+         (n-str (list-ref splt 2)))
+    (unless (string->number n-str)
+      (error (format
+              "couldn't get the loop number from : ~a\n"
+              line-str)))
+    (string-append "Loop " n-str)))
+
 (define (get-label-id label-line-str)
   (let ([token-part (cadr (string-split label-line-str "TargetToken("))])
     (substring token-part 0 (- (string-length token-part) 2))))
 
-(define (get-guard-info guard-line-str)
-  (let* ([second-part (cadr (string-split guard-line-str "Guard"))]
-         [id (car (string-split second-part ">)"))])
-    (make-guard id guard-line-str)))
+(define (extract-guard guard-line-str)
+  (let* ([type (let ([t (regexp-match #px"guard[\\w]*" guard-line-str)]) (and t (car t)))]
+         [id (let ([i (regexp-match #px"0x[\\w]+" guard-line-str)]) (and i (car i)))]
+         [args (let* ([<str> (let ([s (regexp-match #px"\\(.*\\)" guard-line-str)]) (and s (car s)))]
+                      [str (and <str> (substring <str> 1 (sub1 (string-length <str>))))]
+                      [args-ls (string-split str ", ")]) ; args are only a few
+                 (if (null? (cdr args-ls)) null (reverse (cdr (reverse args-ls)))))]
+         [jump-params* (let ([p (regexp-match #px"\\[.*\\]" guard-line-str)]) (and p (car p)))]
+         [jump-params (string-split (substring jump-params* 1 (sub1 (string-length jump-params*))) ", ")])
+    (make-guard id guard-line-str type args jump-params)))
 
 (define (get-jump-info jump-line-str)
   (get-label-id jump-line-str))
@@ -97,13 +112,7 @@
     (for ([line-str (in-list trace-lines-str)])
       #:break break?
       (when (string-contains? line-str "entry bridge")
-        (let* ((splt (string-split line-str " "))
-               (n-str (list-ref splt 2)))
-          (unless (string->number n-str)
-            (error (format
-                    "couldn't get the loop number from : ~a\n"
-                    line-str)))
-          (set! labels (cons (string-append "Loop " n-str) labels)))
+        (set! labels (cons (get-entry-bridge-label-id line-str) labels))
         (set! break? #t))
 
       (when (string-contains? line-str "label(")
@@ -230,23 +239,19 @@
   (let ([maybe-inner (if (not inner-label)
                          #f
                          (make-trace inner-label
-                                         inner-label-line
-                                         #f
-                                         #f
-                                         #f
-                                         (hash-ref lbl->counts inner-label -1)
-                                         ordered-inner-guards
-                                         jump
-                                         (string-join ordered-inner-code "\n")))])
+                                     #f
+                                     #f
+                                     ordered-inner-code
+                                     (hash-ref lbl->counts inner-label -1)
+                                     ordered-inner-guards
+                                     jump))])
     (make-trace outer-label
-                outer-label-line
                 is-entry-bridge?
                 maybe-inner
-                racket-code
+                (append ordered-outer-code ordered-inner-code)
                 (hash-ref lbl->counts outer-label -1)
                 ordered-outer-guards
-                jump
-                (string-join (append ordered-outer-code ordered-inner-code) "\n"))))
+                jump)))
 
 (define (get-bridge-guard-id line-str)
   (let* ([second-part (cadr (string-split line-str "Guard "))])
