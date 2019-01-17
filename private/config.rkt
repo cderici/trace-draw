@@ -4,7 +4,7 @@
 (provide (all-defined-out))
 
 (define FONT-SIZE 9)
-(define T-FONT-SIZE 12)
+(define T-FONT-SIZE 16)
 (define SPACE-SIZE 10)
 (define SEP-SIZE FONT-SIZE)
 (define MARGIN FONT-SIZE)
