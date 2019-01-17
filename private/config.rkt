@@ -21,6 +21,7 @@
 (define X-GAP (* 3 t-width))
 (define Y-GAP (* 2 GAP))
 (define scroll-speed 2)
+(define INDENT 50)
 
 
 (define face "Helvetica")

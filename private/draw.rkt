@@ -176,9 +176,9 @@
        (values (+ y h GAP) w))]
     [(param-tline? tline)
      (define-values (w h d a) (send dc get-text-extent "["))
-     (send dc draw-text "[" 0 y #t)
+     (send dc draw-text "[" INDENT y #t)
      (define wp
-       (for/fold ([w (+ w GAP)])
+       (for/fold ([w (+ INDENT w GAP)])
                  ([p (in-list (param-tline-params tline))])
          (define-values (wp hp dp ap) (send dc get-text-extent p))
          (send dc draw-text p w y #t)
