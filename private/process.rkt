@@ -165,7 +165,7 @@
         [(char=? (string-ref line-str 0) #\[)
          (make-param-tline (string-split
                             (substring line-str 1 (sub1 (string-length line-str)))
-                            ", "))]
+                            ", ") #f)]
         ;; debug-merge-point
         [(string-contains? line-str "debug_merge_point")
          (make-debug-merge-point (car (string-split (cadr (string-split line-str ", '")) "')")))]
