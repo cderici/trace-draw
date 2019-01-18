@@ -4,8 +4,8 @@
 (provide (all-defined-out))
 
 (define FONT-SIZE 9)
-(define T-FONT-SIZE 16)
-(define SECONDARY-T-FONT-SIZE (- T-FONT-SIZE 3))
+(define T-FONT-SIZE 12)
+(define SECONDARY-T-FONT-SIZE (- T-FONT-SIZE 2))
 (define SPACE-SIZE 10)
 (define SEP-SIZE FONT-SIZE)
 (define MARGIN FONT-SIZE)
@@ -56,7 +56,7 @@
 
 (define bridgebox-highlight-brush
   (make-brush #:color (make-color 0 0 100 0.3) #:style 'solid))
-   
+
 (define jump-color "blue")
 
 (define trace-pen-width 2)
