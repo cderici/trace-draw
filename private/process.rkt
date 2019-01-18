@@ -184,7 +184,7 @@
                               (let ([op (let ([o (regexp-match #px"[\\w]+" (car ln))])
                                           (and o (car o)))]
                                     [args (let ([a (regexp-match #px"\\(.*\\)" line-str)])
-                                            (and a (substring (car a) 1 (sub1 (string-length (car a))))))])
+                                            (and a (string-split (substring (car a) 1 (sub1 (string-length (car a)))) ", ")))])
                                 (make-operation-tline op args))))]
         [else (error 'trace-line
                      (format "couldn't recognize this line :\n~a\n" line-str))]))
