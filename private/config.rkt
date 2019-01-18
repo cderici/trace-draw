@@ -17,12 +17,17 @@
 (define b-height (/ t-height 2))
 
 (define SPLINE-SHIFT 100)
-(define GAP 5)
+(define GAP 4)
 (define TGAP (* 2 GAP))
 (define X-GAP (* 3 t-width))
 (define Y-GAP (* 2 GAP))
 (define scroll-speed 2)
 (define INDENT 50)
+
+(define TLINE-H 21)
+
+(define CHAR-W 8) ; single char like "p"
+(define COMMA-WS 8) ; comma whitespace
 
 
 (define face "Montserrat")
@@ -58,6 +63,7 @@
   (make-brush #:color (make-color 0 0 100 0.3) #:style 'solid))
 
 (define jump-color "blue")
+(define tline-hover-color "violet")
 
 (define trace-pen-width 2)
 (define pen-width 1)

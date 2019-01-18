@@ -166,14 +166,18 @@
              #t
              (is-hilite? (bridge-guard-id b) (bridge-jump-target b)))))
 
-(define (render-tline dc tline y jump-target)
+(define (render-tline dc tline tline-# hover-line)
   (send dc set-font t-font)
   (send dc set-text-foreground "black")
+  (define hover? (eq? tline hover-line))
+  (define y (* tline-# TLINE-H))
+
   (cond
     [(info-tline? tline)
      (let ([s (info-tline-line-str tline)])
        (send dc set-font secondary-t-font)
        (define-values (w h d a) (send dc get-text-extent s))
+       (when hover? (send dc set-text-foreground tline-hover-color))
        (send dc draw-text s 0 y #t)
        (values (+ y h GAP) w))]
     [(param-tline? tline)
@@ -185,6 +189,7 @@
      (let ([s (string-append "> " (debug-merge-point-code tline))])
        (send dc set-font secondary-t-font)
        (define-values (w h d a) (send dc get-text-extent s))
+       (when hover? (send dc set-text-foreground tline-hover-color))
        (send dc draw-text s 0 y #t)
        (values (+ y h GAP) w))]
     [(guard? tline)
@@ -193,6 +198,7 @@
                       (string-join (guard-args tline) ", "))])
        (send dc set-text-foreground "red")
        (define-values (w-guard h d a) (send dc get-text-extent s))
+       (when hover? (send dc set-text-foreground tline-hover-color))
        (send dc draw-text s INDENT y #t)
        (define w-extra INDENT)
        (when (guard-bridge? tline)
@@ -201,6 +207,7 @@
            (send dc set-text-foreground "blue")
            (define-values (w-bridge h d a) (send dc get-text-extent s))
            (set! w-extra (+ w-extra w-bridge))
+           (when hover? (send dc set-text-foreground tline-hover-color))
            (send dc draw-text s (+ w-guard INDENT GAP) y #t)
 
            (let ([s "(run N/A times, ~N/A%)"])
@@ -208,6 +215,7 @@
              (send dc set-text-foreground "black")
              (define-values (w-times h d a) (send dc get-text-extent s))
              (set! w-extra (+ w-extra w-times))
+             (when hover? (send dc set-text-foreground tline-hover-color))
              (send dc draw-text s (+ w-guard GAP INDENT w-bridge GAP) y #t))))
 
        (values (+ y h GAP) (+ w-guard w-extra)))]
@@ -218,6 +226,7 @@
                       (string-join (assignment-tline-args tline) ", "))])
        (send dc set-text-foreground "black")
        (define-values (w h d a) (send dc get-text-extent s))
+       (when hover? (send dc set-text-foreground tline-hover-color))
        (send dc draw-text s INDENT y #t)
        (values (+ y h GAP) (+ w INDENT)))]
     [(operation-tline? tline)
@@ -229,6 +238,7 @@
          (send dc set-text-foreground "blue"))
        (let ([s (format "~a(~a)" op (string-join args ", "))])
          (define-values (w h d a) (send dc get-text-extent s))
+         (when hover? (send dc set-text-foreground tline-hover-color))
          (send dc draw-text s INDENT y #t)
          (values (+ y h GAP) (+ w INDENT))))]
     [else

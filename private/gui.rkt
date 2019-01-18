@@ -321,6 +321,7 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                      (send vpanel delete-child infobox)
                                      (send vpanel add-child trace-info-canvas))))]))
 
+  (define pinned-line #f)
   (define prev-pinned-trace #f)
   (define trace-w #f)
   (define trace-h #f)
@@ -346,17 +347,28 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                              sy))
              (when (or tx ty)
                (scroll tx ty)))
-         (define/override (on-char e)
-           (for/or ([key-code (list (send e get-key-code)
-                                    (send e get-other-shift-key-code)
-                                    (send e get-other-altgr-key-code))])
-             (and trace-h
-                  (case key-code
-                    [(wheel-up up) (adjust-scroll 0 (- scroll-speed)) #t]
-                    [(wheel-down down) (adjust-scroll 0 scroll-speed) #t]
-                    [(wheel-left left) (adjust-scroll (- scroll-speed) 0) #t]
-                    [(wheel-right right) (adjust-scroll scroll-speed 0) #t]
-                    [else #f]))))
+           (define/override (on-char e)
+             (for/or ([key-code (list (send e get-key-code)
+                                      (send e get-other-shift-key-code)
+                                      (send e get-other-altgr-key-code))])
+               (and trace-h
+                    (case key-code
+                      [(wheel-up up) (adjust-scroll 0 (- scroll-speed)) #t]
+                      [(wheel-down down) (adjust-scroll 0 scroll-speed) #t]
+                      [(wheel-left left) (adjust-scroll (- scroll-speed) 0) #t]
+                      [(wheel-right right) (adjust-scroll scroll-speed 0) #t]
+                      [else #f]))))
+           (define/override (on-event e)
+             (define-values (dx dy) (get-view-start))
+             (define mouse-x (send e get-x))
+             (define mouse-y (send e get-y))
+             (when pinned-trace
+               (let ([codes (if (trace? pinned-trace)
+                                (trace-code pinned-trace)
+                                (bridge-code pinned-trace))])
+                 (let* ([line-#-ref (quotient (+ mouse-y dy) TLINE-H)])
+                   (set! pinned-line (list-ref codes line-#-ref))
+                   (refresh)))))
            )
          [parent vpanel]
          [min-width (/ total-w 2)]
@@ -370,20 +382,21 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                     [jump-target (if (trace? pinned-trace)
                                      (trace-jump-target pinned-trace)
                                      (bridge-jump-target pinned-trace))])
-                (define-values (final-y max-width)
-                  (for/fold ([y 0][max-w 0])
+                (define-values (final-tline-# max-width)
+                  (for/fold ([tline-# 0][max-w 0])
                             ([tline (in-list codes)])
                     (define-values (new-y new-w)
-                      (render-tline dc tline y jump-target))
-                    (values new-y (max max-w new-w))))
+                      (render-tline dc tline tline-# pinned-line))
+                    (values (add1 tline-#) (max max-w new-w))))
+
 
                 (unless (eq? pinned-trace prev-pinned-trace)
-                  (send c init-auto-scrollbars
-                        (->int max-width)
-                        (->int (+ final-y GAP))
-                        0 0)
                   (set! trace-w max-width)
-                  (set! trace-h final-y)
+                  (set! trace-h (* (+ final-tline-# GAP) TLINE-H))
+                  (send c init-auto-scrollbars
+                        (->int trace-w)
+                        (->int trace-h)
+                        0 0)
                   (set! prev-pinned-trace pinned-trace)))))]))
 
   (define infobox
