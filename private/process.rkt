@@ -176,7 +176,7 @@
          (let ([lhs (string-trim (car (regexp-match #px" [\\w]+ " line-str)))]
                [op (let ([o (regexp-match* #px"[\\w]+" line-str)]) (and o (list-ref o 2)))]
                [args (let ([a (regexp-match #px"\\(.*\\)" line-str)])
-                       (and a (substring (car a) 1 (sub1 (string-length (car a))))))])
+                       (and a (string-split (substring (car a) 1 (sub1 (string-length (car a)))) ", ")))])
            (make-assignment-tline lhs op args))]
         ;; operation-t-line
         [(regexp-match #px"[\\w]+\\(.*\\)" line-str)
