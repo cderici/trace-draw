@@ -63,9 +63,10 @@
          [parent f]
          [alignment '(left top)]))
 
-  (define panel (new horizontal-panel%
-                     [parent main-panel]
-                     [alignment '(left center)]))
+  (define panel
+    (new horizontal-panel%
+         [parent main-panel]
+         [alignment '(left center)]))
 
   (define below-message
     (new message%
@@ -259,6 +260,7 @@
                      (low-priority-refresh)))
                  [parent panel]
                  [style '(hscroll vscroll)]
+                 [min-width (/ total-w 2)]
                  [paint-callback (lambda (c c-dc)
                                    (when refresh-offscreen?
                                      (unless offscreen
@@ -357,7 +359,7 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                     [else #f]))))
            )
          [parent vpanel]
-         [stretchable-width #t]
+         [min-width (/ total-w 2)]
          [style '(hscroll vscroll deleted)]
          [paint-callback
           (lambda (c dc)
@@ -389,6 +391,7 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
          [parent vpanel]
          [label #f]
          [font summary-font]
+         [min-width (/ total-w 2)]
          [callback (lambda (tf ce) ; not changable
                      (send tf set-value summary))]
          [init-value summary]
