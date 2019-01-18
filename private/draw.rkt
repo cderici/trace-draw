@@ -177,18 +177,12 @@
        (send dc draw-text s 0 y #t)
        (values (+ y h GAP) w))]
     [(param-tline? tline)
-     (define-values (w h d a) (send dc get-text-extent "["))
-     (send dc draw-text "[" INDENT y #t)
-     (define wp
-       (for/fold ([w (+ INDENT w GAP)])
-                 ([p (in-list (param-tline-params tline))])
-         (define-values (wp hp dp ap) (send dc get-text-extent p))
-         (send dc draw-text p w y #t)
-         (+ w wp 10)))
-     (send dc draw-text "]" wp y #t)
-     (values (+ y h GAP) (+ wp 20))]
+     (let ([s (format "[~a]" (string-join (param-tline-params tline) ", "))])
+       (define-values (w h d a) (send dc get-text-extent s))
+       (send dc draw-text s INDENT y #t)
+     (values (+ y h GAP) (+ w INDENT)))]
     [(debug-merge-point? tline)
-     (let ([s (debug-merge-point-code tline)])
+     (let ([s (string-append "> " (debug-merge-point-code tline))])
        (send dc set-font secondary-t-font)
        (define-values (w h d a) (send dc get-text-extent s))
        (send dc draw-text s 0 y #t)
