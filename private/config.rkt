@@ -5,6 +5,7 @@
 
 (define FONT-SIZE 9)
 (define T-FONT-SIZE 16)
+(define SECONDARY-T-FONT-SIZE (- T-FONT-SIZE 3))
 (define SPACE-SIZE 10)
 (define SEP-SIZE FONT-SIZE)
 (define MARGIN FONT-SIZE)
@@ -34,6 +35,7 @@
 (define font (make-font #:face face #:size FONT-SIZE #:size-in-pixels? #t))
 (define t-font (make-font #:face face #:size T-FONT-SIZE #:size-in-pixels? #t))
 (define tb-font (make-font #:face face #:size T-FONT-SIZE #:weight 'bold #:size-in-pixels? #t))
+(define secondary-t-font (make-font #:face face #:size SECONDARY-T-FONT-SIZE #:size-in-pixels? #t))
 
 ;; Pens
 (define box-pen (make-pen #:color "black" #:width 1 #:style 'solid))

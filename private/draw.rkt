@@ -171,6 +171,7 @@
   (cond
     [(info-tline? tline)
      (let ([s (info-tline-line-str tline)])
+       (send dc set-font secondary-t-font)
        (define-values (w h d a) (send dc get-text-extent s))
        (send dc draw-text s 0 y #t)
        (values (+ y h GAP) w))]
@@ -186,7 +187,8 @@
      (send dc draw-text "]" wp y #t)
      (values (+ y h GAP) (+ wp 20))]
     [(debug-merge-point? tline)
-     (let ([s "debug-merge-point ---------"])
+     (let ([s (debug-merge-point-code tline)])
+       (send dc set-font secondary-t-font)
        (define-values (w h d a) (send dc get-text-extent s))
        (send dc draw-text s 0 y #t)
        (values (+ y h GAP) w))]
