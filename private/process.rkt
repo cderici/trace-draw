@@ -83,7 +83,7 @@
          [jump-params* (let ([p (regexp-match #px"\\[.*\\]" guard-line-str)]) (and p (car p)))]
          [jump-params (string-split (substring jump-params* 1 (sub1 (string-length jump-params*))) ", ")]
          [bridge? (hash-has-key? bridge-candidates id)])
-    (make-guard id guard-line-str type args jump-params bridge?)))
+    (make-guard id guard-line-str type args jump-params bridge? #f)))
 
 (define (get-jump-info jump-line-str)
   (get-label-id jump-line-str))
@@ -177,7 +177,7 @@
                [op (let ([o (regexp-match* #px"[\\w]+" line-str)]) (and o (list-ref o 2)))]
                [args (let ([a (regexp-match #px"\\(.*\\)" line-str)])
                        (and a (string-split (substring (car a) 1 (sub1 (string-length (car a)))) ", ")))])
-           (make-assignment-tline lhs op args))]
+           (make-assignment-tline lhs op args #f))]
         ;; operation-t-line
         [(regexp-match #px"[\\w]+\\(.*\\)" line-str)
          => (lambda (ln) (and ln
@@ -185,7 +185,7 @@
                                           (and o (car o)))]
                                     [args (let ([a (regexp-match #px"\\(.*\\)" line-str)])
                                             (and a (string-split (substring (car a) 1 (sub1 (string-length (car a)))) ", ")))])
-                                (make-operation-tline op args))))]
+                                (make-operation-tline op args #f))))]
         [else (error 'trace-line
                      (format "couldn't recognize this line :\n~a\n" line-str))]))
 
