@@ -4,7 +4,7 @@
 (provide (all-defined-out))
 
 (define FONT-SIZE 9)
-(define T-FONT-SIZE 12)
+(define T-FONT-SIZE 13)
 (define SECONDARY-T-FONT-SIZE (- T-FONT-SIZE 2))
 (define SPACE-SIZE 10)
 (define SEP-SIZE FONT-SIZE)
@@ -25,7 +25,7 @@
 (define INDENT 50)
 
 
-(define face "Helvetica")
+(define face "Montserrat")
 (define trace-title-font
   (make-font #:face face #:size FONT-SIZE #:weight 'bold #:size-in-pixels? #t))
 

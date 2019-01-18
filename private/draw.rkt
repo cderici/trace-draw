@@ -195,8 +195,8 @@
        (values (+ y h GAP) w))]
     [(guard? tline)
      ;; FIXME : this part could use a good refactoring
-     (let ([s (format "~a ( ~a )" (guard-type tline)
-                      (string-join (guard-args tline) " "))])
+     (let ([s (format "~a(~a)" (guard-type tline)
+                      (string-join (guard-args tline) ", "))])
        (send dc set-text-foreground "red")
        (define-values (w-guard h d a) (send dc get-text-extent s))
        (send dc draw-text s INDENT y #t)
@@ -217,10 +217,14 @@
 
        (values (+ y h GAP) (+ w-guard w-extra)))]
     [(assignment-tline? tline)
-     (let ([s "4 = 2 + 2"])
+     (let ([s (format "~a = ~a(~a)"
+                      (assignment-tline-lhs tline)
+                      (assignment-tline-op tline)
+                      (string-join (assignment-tline-args tline) ", "))])
+       (send dc set-text-foreground "black")
        (define-values (w h d a) (send dc get-text-extent s))
-       (send dc draw-text s 0 y #t)
-       (values (+ y h GAP) w))]
+       (send dc draw-text s INDENT y #t)
+       (values (+ y h GAP) (+ w INDENT)))]
     [(operation-tline? tline)
      (let ([s "operation cwal"])
        (define-values (w h d a) (send dc get-text-extent s))
