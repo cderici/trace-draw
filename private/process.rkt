@@ -14,10 +14,10 @@
 
 (define entry-bridge-count 0)
 
-;; (listof trace-candidates) jit-counts number -> (listof traces)
-(define (pick-most-used-traces candidates jit-counts lbl->counts n [no-count-info #f])
+;; (hash ) jit-counts number -> (listof traces)
+(define (pick-most-used-traces candidates jit-counts lbl->counts n bridge-candidates [no-count-info #f])
   (if no-count-info
-      (map (lambda (c) (process-trace-lines c lbl->counts)) (hash-values candidates))
+      (map (lambda (c) (process-trace-lines c lbl->counts bridge-candidates)) (hash-values candidates))
       ;; ASSUMES : jit-counts doesn't contain duplicate counts
       ;; (i.e. no two traces that are used the same many times) (cross-fingers)
       (let* ([l (hash-count jit-counts)]
@@ -29,7 +29,7 @@
           (or (for/or ([(cnt cl) (in-hash chosen-labels)])
                 (for/or ([l (in-list lbls)])
                   (and (equal? cl l)
-                       (cons (process-trace-lines lines lbl->counts) traces))))
+                       (cons (process-trace-lines lines lbl->counts bridge-candidates) traces))))
               traces)))))
 
 (define (pick-bridges-for traces bridge-candidates)
@@ -42,7 +42,7 @@
         (if (and bridge-lines (not (hash-ref processed (guard-id g) #f)))
             (begin
               (hash-set! processed (guard-id g) #t)
-              (cons (process-bridge-lines bridge-lines) current))
+              (cons (process-bridge-lines bridge-lines bridge-candidates) current))
             current))))
 
   (define first-batch-bridges
@@ -73,7 +73,7 @@
   (let ([token-part (cadr (string-split label-line-str "TargetToken("))])
     (substring token-part 0 (- (string-length token-part) 2))))
 
-(define (extract-guard guard-line-str)
+(define (extract-guard guard-line-str bridge-candidates)
   (let* ([type (let ([t (regexp-match #px"guard[\\w]*" guard-line-str)]) (and t (car t)))]
          [id (let ([i (regexp-match #px"0x[\\w]+" guard-line-str)]) (and i (car i)))]
          [args (let* ([<str> (let ([s (regexp-match #px"\\(.*\\)" guard-line-str)]) (and s (car s)))]
@@ -81,8 +81,9 @@
                       [args-ls (string-split str ", ")]) ; args are only a few
                  (if (null? (cdr args-ls)) null (reverse (cdr (reverse args-ls)))))]
          [jump-params* (let ([p (regexp-match #px"\\[.*\\]" guard-line-str)]) (and p (car p)))]
-         [jump-params (string-split (substring jump-params* 1 (sub1 (string-length jump-params*))) ", ")])
-    (make-guard id guard-line-str type args jump-params)))
+         [jump-params (string-split (substring jump-params* 1 (sub1 (string-length jump-params*))) ", ")]
+         [bridge? (hash-has-key? bridge-candidates id)])
+    (make-guard id guard-line-str type args jump-params bridge?)))
 
 (define (get-jump-info jump-line-str)
   (get-label-id jump-line-str))
@@ -144,7 +145,7 @@
                  (hash-set lbl->count lbl cnt)))]
       [else (values count->lbl lbl->count)])))
 
-(define (process-trace-internals trace-lines-str [for-a-bridge? #f])
+(define (process-trace-internals trace-lines-str bridge-candidates [for-a-bridge? #f])
   (for/fold ([is-entry-bridge? #f]
              [outer-label #f]
              [inner-label #f]
@@ -169,7 +170,7 @@
         [(string-contains? line-str "debug_merge_point")
          (make-debug-merge-point (car (string-split (cadr (string-split line-str ", '")) "')")))]
         ;; guard-tline
-        [(string-contains? line-str " guard_") (extract-guard line-str)]
+        [(string-contains? line-str " guard_") (extract-guard line-str bridge-candidates)]
         ;; assignment-tline
         [(string-contains? line-str " = ")
          (let ([lhs (string-trim (car (regexp-match #px" [\\w]+ " line-str)))]
@@ -210,12 +211,12 @@
 ;; (listof string) -> trace
 ;; ASSUMES : entry bridges never contain labels (noone jumps to them)
 ;; ASSUMES : a trace never contains more than 2 "label"s (one for peeled and one for main)
-(define (process-trace-lines trace-lines-str lbl->counts)
+(define (process-trace-lines trace-lines-str lbl->counts bridge-candidates)
   ;; let's try to make it in a single pass
 
   (define-values
     (is-entry-bridge? outer-label inner-label jump are-we-in-inner-loop outer-code inner-code outer-guards inner-guards)
-    (process-trace-internals trace-lines-str))
+    (process-trace-internals trace-lines-str bridge-candidates))
 
   (define ordered-outer-guards (reverse outer-guards))
   (define ordered-inner-guards (reverse inner-guards))
@@ -246,10 +247,10 @@
 ;; (listof string) -> bridge
 ;; ASSUMES : bridges don't contain labels (no-one jumps onto a bridge)
 ;; ASSUMES : bridges don't contain inner loops
-(define (process-bridge-lines trace-lines-str)
+(define (process-bridge-lines trace-lines-str bridge-candidates)
 
   (define-values (_ label __ jump ___ code ____ guards _____)
-    (process-trace-internals trace-lines-str #t))
+    (process-trace-internals trace-lines-str bridge-candidates #t))
 
   (define ordered-guards (reverse guards))
   (define ordered-code (reverse code))

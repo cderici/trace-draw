@@ -31,6 +31,7 @@
   (define traces
     (pick-most-used-traces trace-candidates
                            jit-counts labeled-counts 20
+                           bridge-candidates
                            no-count?))
 
   (define bridges (pick-bridges-for traces bridge-candidates))

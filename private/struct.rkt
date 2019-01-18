@@ -30,7 +30,7 @@
 ;; 3 -- debug_merge_point
 (define-struct debug-merge-point (code))
 ;; 4 -- guard_class(....) [p0, i1, i2, p3]
-(define-struct guard (id line guard-type args jump-bridge-params))
+(define-struct guard (id line guard-type args jump-bridge-params bridge?))
 #;(define-struct guard-tline (guard-type check-args jump-args))
 ;; 5 -- assignment line -> p5 = getfield_gc_r(p0, .....)
 (define-struct assignment-tline (lhs op args))
