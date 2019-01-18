@@ -3,6 +3,7 @@
 (require racket/class
          racket/draw
          racket/draw/arrow
+         racket/string
          "config.rkt"
          "struct.rkt")
 
@@ -193,10 +194,28 @@
        (send dc draw-text s 0 y #t)
        (values (+ y h GAP) w))]
     [(guard? tline)
-     (let ([s "guard guard guard guard"])
-       (define-values (w h d a) (send dc get-text-extent s))
-       (send dc draw-text s 0 y #t)
-       (values (+ y h GAP) w))]
+     ;; FIXME : this part could use a good refactoring
+     (let ([s (format "~a ( ~a )" (guard-type tline)
+                      (string-join (guard-args tline) " "))])
+       (send dc set-text-foreground "red")
+       (define-values (w-guard h d a) (send dc get-text-extent s))
+       (send dc draw-text s INDENT y #t)
+       (define w-extra INDENT)
+       (when (guard-bridge? tline)
+         (let ([s "show bridge"])
+           (send dc set-text-foreground "blue")
+           (define-values (w-bridge h d a) (send dc get-text-extent s))
+           (set! w-extra (+ w-extra w-bridge))
+           (send dc draw-text s (+ w-guard INDENT GAP) y #t)
+
+           (let ([s "(run N/A times, ~N/A%)"])
+             (send dc set-font secondary-t-font)
+             (send dc set-text-foreground "black")
+             (define-values (w-times h d a) (send dc get-text-extent s))
+             (set! w-extra (+ w-extra w-times))
+             (send dc draw-text s (+ w-guard GAP INDENT w-bridge GAP) y #t))))
+
+       (values (+ y h GAP) (+ w-guard w-extra)))]
     [(assignment-tline? tline)
      (let ([s "4 = 2 + 2"])
        (define-values (w h d a) (send dc get-text-extent s))
