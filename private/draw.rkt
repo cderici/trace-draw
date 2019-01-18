@@ -203,6 +203,7 @@
        (define w-extra INDENT)
        (when (guard-bridge? tline)
          (let ([s "show bridge"])
+           (send dc set-font tb-font)
            (send dc set-text-foreground "blue")
            (define-values (w-bridge h d a) (send dc get-text-extent s))
            (set! w-extra (+ w-extra w-bridge))
@@ -226,10 +227,16 @@
        (send dc draw-text s INDENT y #t)
        (values (+ y h GAP) (+ w INDENT)))]
     [(operation-tline? tline)
-     (let ([s "operation cwal"])
-       (define-values (w h d a) (send dc get-text-extent s))
-       (send dc draw-text s 0 y #t)
-       (values (+ y h GAP) w))]
+     (let* ([op (operation-tline-op tline)]
+            [args (operation-tline-args tline)]
+            [label? (equal? op "label")]
+            [jump? (equal? op "jump")])
+       (when (or label? jump?)
+         (send dc set-text-foreground "blue"))
+       (let ([s (format "~a(~a)" op (string-join args ", "))])
+         (define-values (w h d a) (send dc get-text-extent s))
+         (send dc draw-text s INDENT y #t)
+         (values (+ y h GAP) (+ w INDENT))))]
     [else
      (error 'render-tline (format "this is not a tline : ~a\n" tline))]))
 
