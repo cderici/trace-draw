@@ -14,14 +14,6 @@
 
 (define entry-bridge-count 0)
 
-(define (clear-trace-code-line line-str)
-  (cond
-    [(string-contains? line-str "debug_merge_point")
-     (car (string-split (cadr (string-split line-str ", '")) "')"))]
-    [(string-contains? line-str ": ")
-     (string-join (cons "\t" (cdr (string-split line-str " "))) " ")]
-    [else line-str]))
-
 ;; (listof trace-candidates) jit-counts number -> (listof traces)
 (define (pick-most-used-traces candidates jit-counts lbl->counts n [no-count-info #f])
   (if no-count-info
@@ -67,12 +59,6 @@
                     ([b (in-list first-batch-bridges)])
             (append next
                     (get-guard-bridge-exits (bridge-guards b))))))
-
-(define (get-entry-bridge-id)
-  (let ([new-id (format "entry-bridge-~a" entry-bridge-count)])
-    (begin
-      (set! entry-bridge-count (add1 entry-bridge-count))
-      new-id)))
 
 (define (get-entry-bridge-label-id line-str)
   (let* ((splt (string-split line-str " "))

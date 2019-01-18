@@ -372,22 +372,7 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                             ([tline (in-list codes)])
                     (define-values (new-y new-w)
                       (render-tline dc tline y jump-target))
-                    (values new-y (max max-w new-w))
-                    #|
-                    (send dc set-font t-font)
-                    (send dc set-text-foreground "black")
-                    (when (string-contains? s " guard_")
-                      (send dc set-text-foreground "red"))
-                    (when (or (string-contains? s " jump(")
-                              (string-contains? s "label("))
-                      (send dc set-font tb-font)
-                      (send dc set-text-foreground "darkgreen"))
-                    (define-values (w h d a) (send dc get-text-extent s))
-                    (send dc draw-text s 0 y #t)
-                    (values (+ y h GAP) (max max-w w))
-                    |#
-                    ))
-
+                    (values new-y (max max-w new-w))))
 
                 (unless (eq? pinned-trace prev-pinned-trace)
                   (send c init-auto-scrollbars
