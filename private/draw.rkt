@@ -165,7 +165,7 @@
              #t
              (is-hilite? (bridge-guard-id b) (bridge-jump-target b)))))
 
-(define (render-tline dc tline y)
+(define (render-tline dc tline y jump-target)
   (send dc set-font t-font)
   (send dc set-text-foreground "black")
   (cond

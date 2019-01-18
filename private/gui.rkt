@@ -363,12 +363,15 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
             (when pinned-trace
               (let ([codes (if (trace? pinned-trace)
                                (trace-code pinned-trace)
-                               (bridge-code pinned-trace))])
+                               (bridge-code pinned-trace))]
+                    [jump-target (if (trace? pinned-trace)
+                                     (trace-jump-target pinned-trace)
+                                     (bridge-jump-target pinned-trace))])
                 (define-values (final-y max-width)
                   (for/fold ([y 0][max-w 0])
                             ([tline (in-list codes)])
                     (define-values (new-y new-w)
-                      (render-tline dc tline y))
+                      (render-tline dc tline y jump-target))
                     (values new-y (max max-w new-w))
                     #|
                     (send dc set-font t-font)
