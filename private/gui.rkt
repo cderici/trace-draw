@@ -372,6 +372,8 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                         [current-tline (list-ref codes line-#-ref)])
                    (set! hover-tline current-tline)
                    (let ([bounds (tline-hbounds current-tline)])
+                     (define-values (prev-hilite-param prev-pinned-param)
+                       (values hilite-param pinned-param))
                      (if bounds
                          (let ([hover-param
                                 (for/or ([(p p-bounds) (in-hash bounds)])
@@ -392,7 +394,9 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                            (set! hilite-param #f)
                            (when (send e button-down?)
                              (set! pinned-param #f))))
-                     (refresh))))))
+                     (unless (and (equal? hilite-param prev-hilite-param)
+                                  (equal? pinned-param prev-pinned-param))
+                       (refresh)))))))
            )
          [parent vpanel]
          [min-width (/ total-w 2)]
