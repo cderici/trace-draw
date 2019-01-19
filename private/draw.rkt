@@ -166,9 +166,14 @@
              #t
              (is-hilite? (bridge-guard-id b) (bridge-jump-target b)))))
 
-(define (render-tline dc tline tline-# hover-tline)
+(define (render-regular dc str x y)
   (send dc set-font t-font)
-  (send dc set-text-foreground "black")
+  (send dc set-text-foreground tline-color)
+  (send dc draw-text str x y #t))
+
+(define (render-tline dc tline tline-# hover-tline hilite-param pinned-param)
+  (send dc set-font t-font)
+  (send dc set-text-foreground tline-color)
   (define hover? (eq? tline hover-tline))
   (define y (* tline-# TLINE-H))
 
@@ -177,30 +182,35 @@
      (let ([s (info-tline-line-str tline)])
        (send dc set-font secondary-t-font)
        (define-values (w h d a) (send dc get-text-extent s))
-       (when hover? (send dc set-text-foreground tline-hover-color))
        (send dc draw-text s 0 y #t)
        w)]
     [(param-tline? tline)
      (define first? #t)
      (define start-x INDENT)
-     (when hover? (send dc set-text-foreground tline-hover-color))
-     (send dc draw-text "[" start-x y #t)
+     (render-regular dc "[" start-x y)
      (set! start-x (+ start-x CHAR-W))
      (for ([p-str (in-list (param-tline-params tline))])
        (if first? (set! first? #f)
            (let ()
              (send dc draw-text ", " start-x y #t)
              (set! start-x (+ start-x COMMA-WS))))
-       (define hbounds-x (car (hash-ref (param-tline-hbounds tline) p-str)))
+       (when (or (equal? pinned-param p-str)
+                 (equal? hilite-param p-str))
+         (define-values (x-l x-r)
+           (let ([b (hash-ref (param-tline-hbounds tline) p-str)])
+             (values (car b) (cdr b))))
+         (send dc set-brush tline-highlight-brush)
+         (send dc draw-rounded-rectangle
+               (- start-x GAP) y (+ (- x-r x-l) TGAP) (- TLINE-H GAP)))
+
        (send dc draw-text p-str start-x y #t)
        (set! start-x (+ start-x (* (string-length p-str) CHAR-W))))
-     (send dc draw-text "]" start-x y #t)
+     (render-regular dc "]" start-x y)
      start-x]
     [(debug-merge-point? tline)
      (let ([s (string-append "> " (debug-merge-point-code tline))])
        (send dc set-font secondary-t-font)
        (define-values (w h d a) (send dc get-text-extent s))
-       (when hover? (send dc set-text-foreground tline-hover-color))
        (send dc draw-text s 0 y #t)
        w)]
     [(guard? tline)
@@ -209,7 +219,6 @@
                       (string-join (guard-args tline) ", "))])
        (send dc set-text-foreground "red")
        (define-values (w-guard h d a) (send dc get-text-extent s))
-       (when hover? (send dc set-text-foreground tline-hover-color))
        (send dc draw-text s INDENT y #t)
        (define w-extra INDENT)
        (when (guard-bridge? tline)
@@ -218,7 +227,6 @@
            (send dc set-text-foreground "blue")
            (define-values (w-bridge h d a) (send dc get-text-extent s))
            (set! w-extra (+ w-extra w-bridge))
-           (when hover? (send dc set-text-foreground tline-hover-color))
            (send dc draw-text s (+ w-guard INDENT GAP) y #t)
 
            (let ([s "(run N/A times, ~N/A%)"])
@@ -226,7 +234,6 @@
              (send dc set-text-foreground "black")
              (define-values (w-times h d a) (send dc get-text-extent s))
              (set! w-extra (+ w-extra w-times))
-             (when hover? (send dc set-text-foreground tline-hover-color))
              (send dc draw-text s (+ w-guard GAP INDENT w-bridge GAP) y #t))))
 
        (+ w-guard w-extra))]
@@ -237,7 +244,6 @@
                       (string-join (assignment-tline-args tline) ", "))])
        (send dc set-text-foreground "black")
        (define-values (w h d a) (send dc get-text-extent s))
-       (when hover? (send dc set-text-foreground tline-hover-color))
        (send dc draw-text s INDENT y #t)
        (+ w INDENT))]
     [(operation-tline? tline)
@@ -249,7 +255,6 @@
          (send dc set-text-foreground "blue"))
        (let ([s (format "~a(~a)" op (string-join args ", "))])
          (define-values (w h d a) (send dc get-text-extent s))
-         (when hover? (send dc set-text-foreground tline-hover-color))
          (send dc draw-text s INDENT y #t)
          (+ w INDENT)))]
     [else

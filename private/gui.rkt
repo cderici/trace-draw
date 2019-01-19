@@ -325,6 +325,8 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
   (define prev-pinned-trace #f)
   (define trace-w #f)
   (define trace-h #f)
+  (define hilite-param #f)
+  (define pinned-param #f)
 
   (define trace-info-canvas
     (new (class canvas%
@@ -366,9 +368,31 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                (let ([codes (if (trace? pinned-trace)
                                 (trace-code pinned-trace)
                                 (bridge-code pinned-trace))])
-                 (let* ([line-#-ref (quotient (+ mouse-y dy) TLINE-H)])
-                   (set! hover-tline (list-ref codes line-#-ref))
-                   (refresh)))))
+                 (let* ([line-#-ref (quotient (+ mouse-y dy) TLINE-H)]
+                        [current-tline (list-ref codes line-#-ref)])
+                   (set! hover-tline current-tline)
+                   (let ([bounds (tline-hbounds current-tline)])
+                     (if bounds
+                         (let ([hover-param
+                                (for/or ([(p p-bounds) (in-hash bounds)])
+                                  (let ([p-x-left (- (car p-bounds) dx)]
+                                        [p-x-right (- (cdr p-bounds) dx)])
+                                    (and (mouse-x . >= . p-x-left)
+                                         (mouse-x . <= . p-x-right)
+                                         p)))])
+                           (when (and hover-param
+                                      (send e button-down?)
+                                      (not (equal? pinned-param hover-param)))
+                             (set! pinned-param hover-param))
+                           (when (and (not hover-param)
+                                      (send e button-down?))
+                             (set! pinned-param #f))
+                           (set! hilite-param hover-param))
+                         (begin
+                           (set! hilite-param #f)
+                           (when (send e button-down?)
+                             (set! pinned-param #f))))
+                     (refresh))))))
            )
          [parent vpanel]
          [min-width (/ total-w 2)]
@@ -386,7 +410,8 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                   (for/fold ([tline-# 0][max-w 0])
                             ([tline (in-list codes)])
                     (define new-w
-                      (render-tline dc tline tline-# hover-tline))
+                      (render-tline dc tline tline-#
+                                    hover-tline hilite-param pinned-param))
                     (values (add1 tline-#) (max max-w new-w))))
 
 

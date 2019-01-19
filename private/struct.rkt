@@ -35,6 +35,14 @@
 ;; 6 -- operation line -> setfield_gc(p34, p28, descr=<FieldP pycket.cont.BaseCont.inst_marks 8>)
 (define-struct operation-tline (op args hbounds))
 
+(define (tline-hbounds t)
+  (cond
+    [(param-tline? t) (param-tline-hbounds t)]
+    [(guard? t) (guard-hbounds t)]
+    [(assignment-tline? t) (assignment-tline-hbounds t)]
+    [(operation-tline? t) (operation-tline-hbounds t)]
+    [else #f]))
+
 (define (is-label? tline)
   (and (operation-tline? tline)
        (equal? (operation-tline-op tline) "label")))

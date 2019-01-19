@@ -41,6 +41,10 @@
 (define t-font (make-font #:face face #:size T-FONT-SIZE #:size-in-pixels? #t))
 (define tb-font (make-font #:face face #:size T-FONT-SIZE #:weight 'bold #:size-in-pixels? #t))
 (define secondary-t-font (make-font #:face face #:size SECONDARY-T-FONT-SIZE #:size-in-pixels? #t))
+(define tline-color "black")
+(define hilite-tfont
+  (make-font #:face face #:size (+ T-FONT-SIZE 2) #:weight 'bold #:size-in-pixels? #t))
+(define hilite-tcolor "violet")
 
 ;; Pens
 (define box-pen (make-pen #:color "black" #:width 1 #:style 'solid))
@@ -55,6 +59,9 @@
 
 (define tracebox-highlight-brush
   (make-brush #:color (make-color 0 0 100 0.3) #:style 'solid))
+
+(define tline-highlight-brush
+  (make-brush #:color (make-color 100 255 255 0.3) #:style 'solid))
 
 (define bridgebox-brush
   (make-brush #:color (make-color 0 100 100 0.3) #:style 'solid))
