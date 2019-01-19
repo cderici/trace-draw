@@ -166,11 +166,35 @@
              #t
              (is-hilite? (bridge-guard-id b) (bridge-jump-target b)))))
 
-(define (render-regular dc str x y)
+(define (render-regular dc str x y [text-color tline-color])
   (send dc set-font t-font)
-  (send dc set-text-foreground tline-color)
+  (send dc set-text-foreground text-color)
   (send dc draw-text str x y #t))
 
+(define (render-params dc x l-paren r-paren y params pinned-param hilite-param hbounds
+                       [text-color tline-color])
+  (send dc set-text-foreground text-color)
+  ;; assumes l-paren and r-paren is one char string
+  (define first? #t)
+  (define start-x x)
+  (render-regular dc l-paren start-x y text-color)
+  (set! start-x (+ start-x CHAR-W))
+  (for ([p-str (in-list params)])
+    (if first? (set! first? #f)
+        (let ()
+          (send dc draw-text ", " start-x y #t)
+          (set! start-x (+ start-x COMMA-WS))))
+    (when (or (equal? pinned-param p-str)
+              (equal? hilite-param p-str))
+      (define-values (x-l x-r)
+        (let ([b (hash-ref hbounds p-str)]) (values (car b) (cdr b))))
+      (send dc set-brush tline-highlight-brush)
+      (send dc draw-rounded-rectangle
+            (- start-x GAP) y (+ (- x-r x-l) TGAP) (- TLINE-H GAP)))
+    (send dc draw-text p-str start-x y #t)
+    (set! start-x (+ start-x (* (string-length p-str) CHAR-W))))
+  (render-regular dc r-paren (+ start-x TGAP) y text-color)
+  start-x)
 (define (render-tline dc tline tline-# hover-tline hilite-param pinned-param)
   (send dc set-font t-font)
   (send dc set-text-foreground tline-color)
@@ -185,28 +209,9 @@
        (send dc draw-text s 0 y #t)
        w)]
     [(param-tline? tline)
-     (define first? #t)
-     (define start-x INDENT)
-     (render-regular dc "[" start-x y)
-     (set! start-x (+ start-x CHAR-W))
-     (for ([p-str (in-list (param-tline-params tline))])
-       (if first? (set! first? #f)
-           (let ()
-             (send dc draw-text ", " start-x y #t)
-             (set! start-x (+ start-x COMMA-WS))))
-       (when (or (equal? pinned-param p-str)
-                 (equal? hilite-param p-str))
-         (define-values (x-l x-r)
-           (let ([b (hash-ref (param-tline-hbounds tline) p-str)])
-             (values (car b) (cdr b))))
-         (send dc set-brush tline-highlight-brush)
-         (send dc draw-rounded-rectangle
-               (- start-x GAP) y (+ (- x-r x-l) TGAP) (- TLINE-H GAP)))
-
-       (send dc draw-text p-str start-x y #t)
-       (set! start-x (+ start-x (* (string-length p-str) CHAR-W))))
-     (render-regular dc "]" start-x y)
-     start-x]
+     (render-params dc INDENT "[" "]" y
+                    (param-tline-params tline) pinned-param hilite-param
+                    (param-tline-hbounds tline))]
     [(debug-merge-point? tline)
      (let ([s (string-append "> " (debug-merge-point-code tline))])
        (send dc set-font secondary-t-font)
@@ -214,29 +219,31 @@
        (send dc draw-text s 0 y #t)
        w)]
     [(guard? tline)
-     ;; FIXME : this part could use a good refactoring
-     (let ([s (format "~a(~a)" (guard-type tline)
-                      (string-join (guard-args tline) ", "))])
-       (send dc set-text-foreground "red")
-       (define-values (w-guard h d a) (send dc get-text-extent s))
-       (send dc draw-text s INDENT y #t)
-       (define w-extra INDENT)
-       (when (guard-bridge? tline)
-         (let ([s "show bridge"])
-           (send dc set-font tb-font)
-           (send dc set-text-foreground "blue")
-           (define-values (w-bridge h d a) (send dc get-text-extent s))
-           (set! w-extra (+ w-extra w-bridge))
-           (send dc draw-text s (+ w-guard INDENT GAP) y #t)
+     (define s (guard-type tline))
+     (send dc set-text-foreground "red")
+     (send dc draw-text s INDENT y #t)
+     (define next-x
+       (render-params dc (+ INDENT (* (string-length s) CHAR-W)) "(" ")" y
+                      (guard-args tline) pinned-param hilite-param
+                      (guard-hbounds tline) "red"))
+     (define start-x next-x)
+     (when (guard-bridge? tline)
+       (let ([s "show bridge"])
+         (send dc set-font tb-font)
+         (send dc set-text-foreground "blue")
+         #;(define-values (w-bridge h d a) (send dc get-text-extent s))
+         (define w-bridge (* (string-length s) CHAR-W))
+         (set! start-x (+ next-x w-bridge))
+         (send dc draw-text s (+ start-x GAP) y #t)
 
-           (let ([s "(run N/A times, ~N/A%)"])
-             (send dc set-font secondary-t-font)
-             (send dc set-text-foreground "black")
-             (define-values (w-times h d a) (send dc get-text-extent s))
-             (set! w-extra (+ w-extra w-times))
-             (send dc draw-text s (+ w-guard GAP INDENT w-bridge GAP) y #t))))
-
-       (+ w-guard w-extra))]
+         (let ([s "(run N/A times, ~N/A%)"])
+           (send dc set-font secondary-t-font)
+           (send dc set-text-foreground "black")
+           #;(define-values (w-times h d a) (send dc get-text-extent s))
+           (define w-times (* (string-length s) CHAR-W))
+           (set! start-x (+ start-x w-times))
+           (send dc draw-text s (+ start-x GAP) y #t))))
+     start-x]
     [(assignment-tline? tline)
      (let ([s (format "~a = ~a(~a)"
                       (assignment-tline-lhs tline)

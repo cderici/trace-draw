@@ -26,7 +26,7 @@
 
 (define TLINE-H 21)
 
-(define CHAR-W 8) ; single char like "p"
+(define CHAR-W 7) ; single char like "p"
 (define COMMA-WS 8) ; comma whitespace
 
 

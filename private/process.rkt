@@ -82,9 +82,18 @@
                       [args-ls (string-split str ", ")]) ; args are only a few
                  (if (null? (cdr args-ls)) null (reverse (cdr (reverse args-ls)))))]
          [jump-params* (let ([p (regexp-match #px"\\[.*\\]" guard-line-str)]) (and p (car p)))]
-         [jump-params (string-split (substring jump-params* 1 (sub1 (string-length jump-params*))) ", ")]
+         [jump-params
+          (string-split (substring jump-params* 1 (sub1 (string-length jump-params*))) ", ")]
          [bridge? (hash-has-key? bridge-candidates id)])
-    (make-guard id guard-line-str type args jump-params bridge? #f)))
+    (define start-x (+ INDENT (* (add1 (string-length type)) CHAR-W)))
+    (define-values (param-bounds last-x)
+      (for/fold ([hbounds (hash)]
+                 [current-x start-x])
+                ([p (in-list args)])
+        (let ([p-end-x (+ current-x (* (string-length p) CHAR-W))])
+          (values (hash-set hbounds p (cons current-x p-end-x))
+                  (+ p-end-x COMMA-WS)))))
+    (make-guard id guard-line-str type args jump-params bridge? param-bounds)))
 
 (define (get-jump-info jump-line-str)
   (get-label-id jump-line-str))
@@ -186,7 +195,8 @@
         [(string-contains? line-str "debug_merge_point")
          (make-debug-merge-point (car (string-split (cadr (string-split line-str ", '")) "')")))]
         ;; guard-tline
-        [(string-contains? line-str " guard_") (extract-guard line-str bridge-candidates)]
+        [(string-contains? line-str " guard_")
+         (extract-guard line-str bridge-candidates)]
         ;; assignment-tline
         [(string-contains? line-str " = ")
          (let ([lhs (string-trim (car (regexp-match #px" [\\w]+ " line-str)))]
