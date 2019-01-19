@@ -321,7 +321,7 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                      (send vpanel delete-child infobox)
                                      (send vpanel add-child trace-info-canvas))))]))
 
-  (define pinned-line #f)
+  (define hover-tline #f)
   (define prev-pinned-trace #f)
   (define trace-w #f)
   (define trace-h #f)
@@ -367,7 +367,7 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                 (trace-code pinned-trace)
                                 (bridge-code pinned-trace))])
                  (let* ([line-#-ref (quotient (+ mouse-y dy) TLINE-H)])
-                   (set! pinned-line (list-ref codes line-#-ref))
+                   (set! hover-tline (list-ref codes line-#-ref))
                    (refresh)))))
            )
          [parent vpanel]
@@ -385,8 +385,8 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                 (define-values (final-tline-# max-width)
                   (for/fold ([tline-# 0][max-w 0])
                             ([tline (in-list codes)])
-                    (define-values (new-y new-w)
-                      (render-tline dc tline tline-# pinned-line))
+                    (define new-w
+                      (render-tline dc tline tline-# hover-tline))
                     (values (add1 tline-#) (max max-w new-w))))
 
 

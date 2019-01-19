@@ -2,7 +2,8 @@
 
 (require racket/string
          racket/list
-         "struct.rkt")
+         "struct.rkt"
+         "config.rkt")
 
 (provide pick-most-used-traces
          pick-bridges-for
@@ -171,9 +172,16 @@
         [(char=? (string-ref line-str 0) #\#) (make-info-tline line-str)]
         ;; param-tline
         [(char=? (string-ref line-str 0) #\[)
-         (make-param-tline (string-split
-                            (substring line-str 1 (sub1 (string-length line-str)))
-                            ", ") #f)]
+         (let ([params (string-split
+                        (substring line-str 1 (sub1 (string-length line-str))) ", ")])
+           (define-values (param-hbounds last-x)
+             (for/fold ([hbounds (hash)]
+                        [current-x (+ INDENT CHAR-W)])
+                       ([p (in-list params)])
+               (values
+                (hash-set hbounds p current-x)
+                (+ current-x (+ (* (string-length p) CHAR-W) COMMA-WS)))))
+           (make-param-tline params param-hbounds))]
         ;; debug-merge-point
         [(string-contains? line-str "debug_merge_point")
          (make-debug-merge-point (car (string-split (cadr (string-split line-str ", '")) "')")))]
