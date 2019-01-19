@@ -175,14 +175,7 @@
         [(char=? (string-ref line-str 0) #\[)
          (let ([params (string-split
                         (substring line-str 1 (sub1 (string-length line-str))) ", ")])
-           (define-values (param-hbounds last-x)
-             (for/fold ([hbounds (hash)]
-                        [current-x (+ INDENT CHAR-W)])
-                       ([p (in-list params)])
-               (let ([p-end-x (+ current-x (* (string-length p) CHAR-W))])
-                 (values (hash-set hbounds p (cons current-x p-end-x))
-                         (+ p-end-x COMMA-WS)))))
-           (make-param-tline params param-hbounds))]
+           (make-param-tline params #f))]
         ;; debug-merge-point
         [(string-contains? line-str "debug_merge_point")
          (make-debug-merge-point (car (string-split (cadr (string-split line-str ", '")) "')")))]

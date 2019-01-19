@@ -210,6 +210,7 @@
     (set! start-x (+ start-x p-w)))
   (render-regular dc r-paren start-x y text-color)
   (values (+ start-x paren-w) param-bounds))
+
 (define (render-tline dc tline tline-# hover-tline hilite-param pinned-param)
   (send dc set-font t-font)
   (send dc set-text-foreground tline-color)
@@ -228,6 +229,8 @@
        (render-params dc INDENT "[" "]" y
                       (param-tline-params tline) pinned-param hilite-param
                       (param-tline-hbounds tline)))
+     (unless (param-tline-hbounds tline)
+       (set-param-tline-hbounds! tline param-bounds))
      next-x]
     [(debug-merge-point? tline)
      (let ([s (string-append "> " (debug-merge-point-code tline))])
