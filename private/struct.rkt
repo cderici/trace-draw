@@ -19,23 +19,21 @@
                        jump-target))
 
 (define-struct display-bound (x y w h))
-(define-struct h-bound (xl xr))
 
 ;; For trace internals
-;; v-posns -> (hash string -> h-bound)
 ;; 1 -- starts with #
 (define-struct info-tline (line-str))
 ;; 2 -- [p0, i1, i2, p3]
-(define-struct param-tline (params v-posns)) ; list of str
+(define-struct param-tline (params hbounds)) ; list of str
 ;; 3 -- debug_merge_point
 (define-struct debug-merge-point (code))
 ;; 4 -- guard_class(....) [p0, i1, i2, p3]
-(define-struct guard (id line type args jump-bridge-params bridge? v-posns))
+(define-struct guard (id line type args jump-bridge-params bridge? hbounds))
 #;(define-struct guard-tline (guard-type check-args jump-args))
 ;; 5 -- assignment line -> p5 = getfield_gc_r(p0, .....)
-(define-struct assignment-tline (lhs op args v-posns))
+(define-struct assignment-tline (lhs op args hbounds))
 ;; 6 -- operation line -> setfield_gc(p34, p28, descr=<FieldP pycket.cont.BaseCont.inst_marks 8>)
-(define-struct operation-tline (op args v-posns))
+(define-struct operation-tline (op args hbounds))
 
 (define (is-label? tline)
   (and (operation-tline? tline)
