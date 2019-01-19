@@ -178,9 +178,9 @@
              (for/fold ([hbounds (hash)]
                         [current-x (+ INDENT CHAR-W)])
                        ([p (in-list params)])
-               (values
-                (hash-set hbounds p current-x)
-                (+ current-x (+ (* (string-length p) CHAR-W) COMMA-WS)))))
+               (let ([p-end-x (+ current-x (* (string-length p) CHAR-W))])
+                 (values (hash-set hbounds p (cons current-x p-end-x))
+                         (+ p-end-x COMMA-WS)))))
            (make-param-tline params param-hbounds))]
         ;; debug-merge-point
         [(string-contains? line-str "debug_merge_point")

@@ -191,7 +191,7 @@
            (let ()
              (send dc draw-text ", " start-x y #t)
              (set! start-x (+ start-x COMMA-WS))))
-       (define hbounds-x (hash-ref (param-tline-hbounds tline) p-str))
+       (define hbounds-x (car (hash-ref (param-tline-hbounds tline) p-str)))
        (send dc draw-text p-str start-x y #t)
        (set! start-x (+ start-x (* (string-length p-str) CHAR-W))))
      (send dc draw-text "]" start-x y #t)
