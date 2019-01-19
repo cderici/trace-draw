@@ -85,15 +85,7 @@
          [jump-params
           (string-split (substring jump-params* 1 (sub1 (string-length jump-params*))) ", ")]
          [bridge? (hash-has-key? bridge-candidates id)])
-    (define start-x (+ INDENT (* (add1 (string-length type)) CHAR-W)))
-    (define-values (param-bounds last-x)
-      (for/fold ([hbounds (hash)]
-                 [current-x start-x])
-                ([p (in-list args)])
-        (let ([p-end-x (+ current-x (* (string-length p) CHAR-W))])
-          (values (hash-set hbounds p (cons current-x p-end-x))
-                  (+ p-end-x COMMA-WS)))))
-    (make-guard id guard-line-str type args jump-params bridge? param-bounds)))
+    (make-guard id guard-line-str type args jump-params bridge? #f)))
 
 (define (get-jump-info jump-line-str)
   (get-label-id jump-line-str))

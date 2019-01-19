@@ -24,16 +24,16 @@
 ;; 1 -- starts with #
 (define-struct info-tline (line-str))
 ;; 2 -- [p0, i1, i2, p3]
-(define-struct param-tline (params hbounds)) ; list of str
+(define-struct param-tline (params [hbounds #:mutable])) ; list of str
 ;; 3 -- debug_merge_point
 (define-struct debug-merge-point (code))
 ;; 4 -- guard_class(....) [p0, i1, i2, p3]
-(define-struct guard (id line type args jump-bridge-params bridge? hbounds))
+(define-struct guard (id line type args jump-bridge-params bridge? [hbounds #:mutable]))
 #;(define-struct guard-tline (guard-type check-args jump-args))
 ;; 5 -- assignment line -> p5 = getfield_gc_r(p0, .....)
-(define-struct assignment-tline (lhs op args hbounds))
+(define-struct assignment-tline (lhs op args [hbounds #:mutable]))
 ;; 6 -- operation line -> setfield_gc(p34, p28, descr=<FieldP pycket.cont.BaseCont.inst_marks 8>)
-(define-struct operation-tline (op args hbounds))
+(define-struct operation-tline (op args [hbounds #:mutable]))
 
 (define (tline-hbounds t)
   (cond
