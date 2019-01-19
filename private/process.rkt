@@ -32,7 +32,7 @@
                        (cons (process-trace-lines lines lbl->counts bridge-candidates) traces))))
               traces)))))
 
-(define (pick-bridges-for traces bridge-candidates)
+(define (pick-bridges-for traces bridge-candidates lbl->counts)
   (define processed (make-hash))
 
   (define (get-guard-bridge-exits guards)
@@ -42,7 +42,7 @@
         (if (and bridge-lines (not (hash-ref processed (guard-id g) #f)))
             (begin
               (hash-set! processed (guard-id g) #t)
-              (cons (process-bridge-lines bridge-lines bridge-candidates) current))
+              (cons (process-bridge-lines bridge-lines bridge-candidates lbl->counts) current))
             current))))
 
   (define first-batch-bridges
@@ -255,13 +255,13 @@
 ;; (listof string) -> bridge
 ;; ASSUMES : bridges don't contain labels (no-one jumps onto a bridge)
 ;; ASSUMES : bridges don't contain inner loops
-(define (process-bridge-lines trace-lines-str bridge-candidates)
+(define (process-bridge-lines trace-lines-str bridge-candidates lbl->counts)
 
   (define-values (_ label __ jump ___ code ____ guards _____)
     (process-trace-internals trace-lines-str bridge-candidates #t))
 
   (define ordered-guards (reverse guards))
   (define ordered-code (reverse code))
-
-  (make-bridge label ordered-guards -1 ordered-code jump)
+  (define use-count (hash-ref lbl->counts label #f))
+  (make-bridge label ordered-guards use-count ordered-code jump)
   )

@@ -34,7 +34,7 @@
                            bridge-candidates
                            no-count?))
 
-  (define bridges (pick-bridges-for traces bridge-candidates))
+  (define bridges (pick-bridges-for traces bridge-candidates labeled-counts))
 
   (define pinned-trace #f)
   (define hover #f)
