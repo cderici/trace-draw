@@ -413,12 +413,11 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
   (define (update-message-bar)
     (let* ([is-trace? (trace? pinned-trace)]
            [inner-loop (and is-trace? (trace-inner-loop pinned-trace))]
-           [label (if is-trace?
-                      (trace-label pinned-trace)
-                      (bridge-guard-id pinned-trace))]
-           [inner-label (and inner-loop (trace-label inner-loop))]
-           [cnt (hash-ref labeled-counts label #f)]
-           [cnt-inner (and inner-label (hash-ref labeled-counts inner-label #f))]
+           [cnt (if is-trace?
+                    (trace-use-count pinned-trace)
+                    (bridge-use-count pinned-trace))]
+           [cnt-inner (and inner-loop
+                           (trace-use-count inner-loop))]
            [msg
             (if no-count?
                 "No count info in the input file"
