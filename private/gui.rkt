@@ -411,19 +411,21 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
          [style '(multiple hscroll)]))
 
   (define (update-message-bar)
-    (if (trace? pinned-trace)
-        (let ()
-          (define msg
+    (let* ([is-trace? (trace? pinned-trace)]
+           [inner-loop (and is-trace? (trace-inner-loop pinned-trace))]
+           [label (if is-trace?
+                      (trace-label pinned-trace)
+                      (bridge-guard-id pinned-trace))]
+           [inner-label (and inner-loop (trace-label inner-loop))]
+           [cnt (hash-ref labeled-counts label #f)]
+           [cnt-inner (and inner-label (hash-ref labeled-counts inner-label #f))]
+           [msg
             (if no-count?
                 "No count info in the input file"
-                (if (trace-inner-loop pinned-trace)
-                    (format "Run ~a / ~a times"
-                            (hash-ref labeled-counts (trace-label pinned-trace) #f)
-                            (hash-ref labeled-counts (trace-label (trace-inner-loop pinned-trace)) #f))
-                    (format "Run ~a times"
-                            (hash-ref labeled-counts (trace-label pinned-trace) #f)))))
-          (send below-message set-label msg))
-        (send below-message set-label "")))
+                (if inner-loop
+                    (format "Run ~a / ~a times" cnt cnt-inner)
+                    (format "Run ~a times" cnt)))])
+      (send below-message set-label msg)))
 
   (send f center 'both)
   (send f show #t)

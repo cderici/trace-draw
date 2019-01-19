@@ -143,6 +143,14 @@
               [lbl (format "Loop ~a" (cadr (string-split (car f) " ")))])
          (values (hash-set count->lbl cnt lbl)
                  (hash-set lbl->count lbl cnt)))]
+      [(string-contains? line-str "bridge ")
+       (let* ([nums (regexp-match* #px"[0-9]+" line-str)]
+              [lbl (string-append
+                    "0x" (number->string
+                          (string->number (car nums)) 16))]
+              [cnt (string->number (cadr nums))])
+         (values (hash-set count->lbl cnt lbl)
+                 (hash-set lbl->count lbl cnt)))]
       [else (values count->lbl lbl->count)])))
 
 (define (process-trace-internals trace-lines-str bridge-candidates [for-a-bridge? #f])
