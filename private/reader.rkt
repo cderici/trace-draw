@@ -102,7 +102,7 @@
           (if (string-contains? ln " jit-summary}")
               (begin
                 (set! record-summary #f)
-                (set! jit-summary-lines (cdr (reverse (cdr current-summary-lines))))
+                (set! jit-summary-lines (cdr (reverse current-summary-lines)))
                 (set! current-summary-lines null))
               (set! current-summary-lines (cons ln current-summary-lines))))
 
@@ -110,7 +110,7 @@
           (if (string-contains? ln " jit-backend-counts}")
               (begin
                 (set! record-counts #f)
-                (set! jit-backend-count-lines (cdr (reverse (cdr current-backend-count-lines))))
+                (set! jit-backend-count-lines (cdr (reverse current-backend-count-lines)))
                 (set! current-backend-count-lines null))
               (set! current-backend-count-lines (cons ln current-backend-count-lines))))
 
