@@ -290,13 +290,22 @@
      (let* ([op (operation-tline-op tline)]
             [args (operation-tline-args tline)]
             [label? (equal? op "label")]
-            [jump? (equal? op "jump")])
+            [jump? (equal? op "jump")]
+            [hbounds (operation-tline-hbounds tline)]
+            [start-x INDENT])
+       (define color tline-color)
        (when (or label? jump?)
-         (send dc set-text-foreground "blue"))
-       (let ([s (format "~a(~a)" op (string-join args ", "))])
-         (define-values (w h d a) (send dc get-text-extent s))
-         (send dc draw-text s INDENT y #t)
-         (+ w INDENT)))]
+         (set! color "blue"))
+       (send dc set-text-foreground color)
+       (define-values (op-w op-h op-d op-a) (send dc get-text-extent op))
+       (send dc draw-text op start-x y #t)
+       (set! start-x (+ start-x op-w))
+       (define-values (next-x param-bounds)
+         (render-params dc start-x "(" ")" y
+                        args pinned-param hilite-param hbounds color))
+       (unless hbounds
+         (set-operation-tline-hbounds! tline param-bounds))
+       next-x)]
     [else
      (error 'render-tline (format "this is not a tline : ~a\n" tline))]))
 
