@@ -45,6 +45,9 @@
 (define hilite-tfont
   (make-font #:face face #:size (+ T-FONT-SIZE 2) #:weight 'bold #:size-in-pixels? #t))
 (define hilite-tcolor "violet")
+(define show-bridge-underline-font
+  (make-font #:face face #:size T-FONT-SIZE #:weight 'bold #:size-in-pixels? #t #:underlined? #t))
+
 
 ;; Pens
 (define box-pen (make-pen #:color "black" #:width 1 #:style 'solid))

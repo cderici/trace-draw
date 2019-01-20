@@ -247,7 +247,9 @@
        (render-params dc (+ w INDENT) "(" ")" y
                       (guard-args tline) pinned-param hilite-param
                       (guard-hbounds tline) "red"))
+     (define init? #f)
      (unless (guard-hbounds tline)
+       (set! init? #t)
        (set-guard-hbounds! tline param-bounds))
      (define start-x next-x)
      (when (guard-bridge? tline)
@@ -256,9 +258,16 @@
          (send dc set-text-foreground "blue")
          (define-values (w-bridge h d a) (send dc get-text-extent s))
          (set! start-x (+ start-x TGAP))
+         (define s-id (string-append s (guard-id tline)))
+         (when (or (equal? pinned-param s-id)
+                   (equal? hilite-param s-id))
+           (send dc set-font show-bridge-underline-font))
          (send dc draw-text s start-x y #t)
+         (when init?
+           (set-guard-hbounds!
+            tline (hash-set (guard-hbounds tline)
+                            s-id (cons start-x (+ start-x w-bridge)))))
          (set! start-x (+ start-x w-bridge))
-
          (let ([s "(run N/A times, ~N/A%)"])
            (send dc set-font secondary-t-font)
            (send dc set-text-foreground "black")

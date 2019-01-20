@@ -35,6 +35,9 @@
 ;; 6 -- operation line -> setfield_gc(p34, p28, descr=<FieldP pycket.cont.BaseCont.inst_marks 8>)
 (define-struct operation-tline (op args [hbounds #:mutable]))
 
+(define (is-param? p)
+  (not (or (string->number p) (equal? p "show bridge"))))
+
 (define (tline-hbounds t)
   (cond
     [(param-tline? t) (param-tline-hbounds t)]
