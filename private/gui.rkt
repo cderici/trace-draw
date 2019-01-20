@@ -382,21 +382,41 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                     (and (mouse-x . >= . p-x-left)
                                          (mouse-x . <= . p-x-right)
                                          p)))])
+                           ;; switch traces
                            (when (and hover-param
+                                      (send e button-down?)
+                                      (string-contains? hover-param "show bridge"))
+                             (for ([b (in-list bridges)])
+                               (when (equal? (guard-id current-tline)
+                                             (bridge-guard-id b))
+                                 (set! pinned-trace b)
+                                 (set! refresh-offscreen? #t)
+                                 (send c refresh)
+                                 (send c reset-hilites)
+                                 (update-message-bar)
+                                 (refresh))))
+                           ;; reset the pinned-param
+                           (when (and hover-param
+                                      (is-param? hover-param)
                                       (send e button-down?)
                                       (not (equal? pinned-param hover-param)))
                              (set! pinned-param hover-param))
+                           ;; un-set the pinned-param
                            (when (and (not hover-param)
                                       (send e button-down?))
                              (set! pinned-param #f))
-                           (set! hilite-param hover-param))
+                           ;; reset the hilite-param
+                           (when (or (not hover-param) (is-param? hover-param))
+                             (set! hilite-param hover-param)))
                          (begin
+                           ;; unset all
                            (set! hilite-param #f)
                            (when (send e button-down?)
                              (set! pinned-param #f))))
                      (unless (and (equal? hilite-param prev-hilite-param)
                                   (equal? pinned-param prev-pinned-param))
                        (refresh)))))))
+
            )
          [parent vpanel]
          [min-width (/ total-w 2)]
