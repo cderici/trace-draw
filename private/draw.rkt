@@ -268,14 +268,24 @@
            (set! start-x (+ start-x w-times)))))
      start-x]
     [(assignment-tline? tline)
-     (let ([s (format "~a = ~a(~a)"
-                      (assignment-tline-lhs tline)
-                      (assignment-tline-op tline)
-                      (string-join (assignment-tline-args tline) ", "))])
-       (send dc set-text-foreground "black")
-       (define-values (w h d a) (send dc get-text-extent s))
-       (send dc draw-text s INDENT y #t)
-       (+ w INDENT))]
+     (let ([lhs (assignment-tline-lhs tline)]
+           [op (assignment-tline-op tline)]
+           [args (assignment-tline-args tline)]
+           [hbounds (assignment-tline-hbounds tline)]
+           [start-x INDENT])
+       (define lhs-str (string-append lhs " = "))
+       (define-values (lhs-w lhs-h lhs-d lhs-a) (send dc get-text-extent lhs-str))
+       (send dc draw-text lhs-str start-x y #t)
+       (set! start-x (+ start-x lhs-w))
+       (define-values (op-w op-h op-d op-a) (send dc get-text-extent op))
+       (send dc draw-text op start-x y #t)
+       (set! start-x (+ start-x op-w))
+       (define-values (next-x param-bounds)
+         (render-params dc start-x "(" ")" y
+                        args pinned-param hilite-param hbounds))
+       (unless hbounds
+         (set-assignment-tline-hbounds! tline param-bounds))
+       next-x)]
     [(operation-tline? tline)
      (let* ([op (operation-tline-op tline)]
             [args (operation-tline-args tline)]
