@@ -274,9 +274,16 @@
            [hbounds (assignment-tline-hbounds tline)]
            [start-x INDENT])
        (define lhs-str (string-append lhs " = "))
-       (define-values (lhs-w lhs-h lhs-d lhs-a) (send dc get-text-extent lhs-str))
+       (define-values (lhs-w _ __ ___) (send dc get-text-extent lhs))
+       (define-values (lhs-str-w _2 __2 ___2) (send dc get-text-extent lhs-str))
+       (define lhs-start-x start-x)
+       (when (or (equal? pinned-param lhs)
+                 (equal? hilite-param lhs))
+         (send dc set-brush tline-highlight-brush)
+         (send dc draw-rounded-rectangle
+               (- start-x GAP) y (+ lhs-w TGAP) (- TLINE-H GAP)))
        (send dc draw-text lhs-str start-x y #t)
-       (set! start-x (+ start-x lhs-w))
+       (set! start-x (+ start-x lhs-str-w))
        (define-values (op-w op-h op-d op-a) (send dc get-text-extent op))
        (send dc draw-text op start-x y #t)
        (set! start-x (+ start-x op-w))
@@ -284,7 +291,9 @@
          (render-params dc start-x "(" ")" y
                         args pinned-param hilite-param hbounds))
        (unless hbounds
-         (set-assignment-tline-hbounds! tline param-bounds))
+         (set-assignment-tline-hbounds!
+          tline
+          (hash-set param-bounds lhs (cons lhs-start-x (+ lhs-start-x lhs-w)))))
        next-x)]
     [(operation-tline? tline)
      (let* ([op (operation-tline-op tline)]
