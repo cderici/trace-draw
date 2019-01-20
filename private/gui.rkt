@@ -372,55 +372,57 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                 (trace-code pinned-trace)
                                 (bridge-code pinned-trace))])
                  (let* ([line-#-ref (quotient (+ mouse-y dy) TLINE-H)]
-                        [current-tline (list-ref codes line-#-ref)])
+                        [current-tline (and (< line-#-ref (length codes))
+                                            (list-ref codes line-#-ref))])
                    (set! hover-tline current-tline)
-                   (let ([bounds (tline-hbounds current-tline)])
-                     (define-values (prev-hilite-param prev-pinned-param)
-                       (values hilite-param pinned-param))
-                     (if bounds
-                         (let ([hover-param
-                                (for/or ([(p p-bounds) (in-hash bounds)])
-                                  (let ([p-x-left (- (car p-bounds) dx)]
-                                        [p-x-right (- (cdr p-bounds) dx)])
-                                    (and (mouse-x . >= . p-x-left)
-                                         (mouse-x . <= . p-x-right)
-                                         p)))])
-                           (when (send e leaving?)
-                             (set! hover-tline #f))
-                           ;; switch traces
-                           (when (and hover-param
-                                      (send e button-down?)
-                                      (string-contains? hover-param "show bridge"))
-                             (for ([b (in-list bridges)])
-                               (when (equal? (guard-id current-tline)
-                                             (bridge-guard-id b))
-                                 (set! pinned-trace b)
-                                 (set! refresh-offscreen? #t)
-                                 (send c refresh)
-                                 (send c reset-hilites)
-                                 (update-message-bar)
-                                 (refresh))))
-                           ;; reset the pinned-param
-                           (when (and hover-param
-                                      (is-param? hover-param)
-                                      (send e button-down?)
-                                      (not (equal? pinned-param hover-param)))
-                             (set! pinned-param hover-param))
-                           ;; un-set the pinned-param
-                           (when (and (not hover-param)
-                                      (send e button-down?))
-                             (set! pinned-param #f))
-                           ;; reset the hilite-param
-                           (when (or (not hover-param) (is-param? hover-param))
-                             (set! hilite-param hover-param)))
-                         (begin
-                           ;; unset all
-                           (set! hilite-param #f)
-                           (when (send e button-down?)
-                             (set! pinned-param #f))))
-                     (unless (and (equal? hilite-param prev-hilite-param)
-                                  (equal? pinned-param prev-pinned-param))
-                       (refresh)))))))
+                   (when hover-tline
+                     (let ([bounds (tline-hbounds current-tline)])
+                       (define-values (prev-hilite-param prev-pinned-param)
+                         (values hilite-param pinned-param))
+                       (if bounds
+                           (let ([hover-param
+                                  (for/or ([(p p-bounds) (in-hash bounds)])
+                                    (let ([p-x-left (- (car p-bounds) dx)]
+                                          [p-x-right (- (cdr p-bounds) dx)])
+                                      (and (mouse-x . >= . p-x-left)
+                                           (mouse-x . <= . p-x-right)
+                                           p)))])
+                             (when (send e leaving?)
+                               (set! hover-tline #f))
+                             ;; switch traces
+                             (when (and hover-param
+                                        (send e button-down?)
+                                        (string-contains? hover-param "show bridge"))
+                               (for ([b (in-list bridges)])
+                                 (when (equal? (guard-id current-tline)
+                                               (bridge-guard-id b))
+                                   (set! pinned-trace b)
+                                   (set! refresh-offscreen? #t)
+                                   (send c refresh)
+                                   (send c reset-hilites)
+                                   (update-message-bar)
+                                   (refresh))))
+                             ;; reset the pinned-param
+                             (when (and hover-param
+                                        (is-param? hover-param)
+                                        (send e button-down?)
+                                        (not (equal? pinned-param hover-param)))
+                               (set! pinned-param hover-param))
+                             ;; un-set the pinned-param
+                             (when (and (not hover-param)
+                                        (send e button-down?))
+                               (set! pinned-param #f))
+                             ;; reset the hilite-param
+                             (when (or (not hover-param) (is-param? hover-param))
+                               (set! hilite-param hover-param)))
+                           (begin
+                             ;; unset all
+                             (set! hilite-param #f)
+                             (when (send e button-down?)
+                               (set! pinned-param #f))))
+                       (unless (and (equal? hilite-param prev-hilite-param)
+                                    (equal? pinned-param prev-pinned-param))
+                         (refresh))))))))
 
            )
          [parent vpanel]
