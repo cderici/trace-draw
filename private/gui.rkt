@@ -226,6 +226,9 @@
                                 (mouse-x . <= . x-right)
                                 (mouse-y . <= . y-bottom)
                                 t-b))))
+                     (when (send e leaving?)
+                       (set! hover-trace #f)
+                       (reset-hilites))
                      ;; setting a pinned-trace
                      (when (and hover-trace
                                 (send e button-down?)
@@ -382,6 +385,8 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                     (and (mouse-x . >= . p-x-left)
                                          (mouse-x . <= . p-x-right)
                                          p)))])
+                           (when (send e leaving?)
+                             (set! hover-tline #f))
                            ;; switch traces
                            (when (and hover-param
                                       (send e button-down?)
