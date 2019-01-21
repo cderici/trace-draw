@@ -9,6 +9,7 @@
 (define SPACE-SIZE 10)
 (define SEP-SIZE FONT-SIZE)
 (define MARGIN FONT-SIZE)
+(define MSG-FONT-SIZE T-FONT-SIZE)
 
 (define t-width 70) ; trace width
 (define t-height 100); trace height
@@ -47,6 +48,7 @@
 (define hilite-tcolor "violet")
 (define show-bridge-underline-font
   (make-font #:face face #:size T-FONT-SIZE #:weight 'bold #:size-in-pixels? #t #:underlined? #t))
+(define main-msg-font (make-font #:face face #:size MSG-FONT-SIZE #:size-in-pixels? #t))
 
 
 ;; Pens

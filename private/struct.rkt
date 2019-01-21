@@ -46,6 +46,11 @@
     [(operation-tline? t) (operation-tline-hbounds t)]
     [else #f]))
 
+(define (get-label t-b)
+  (if (trace? t-b)
+      (trace-label t-b)
+      (bridge-guard-id t-b)))
+
 (define (is-label? tline)
   (and (operation-tline? tline)
        (equal? (operation-tline-op tline) "label")))

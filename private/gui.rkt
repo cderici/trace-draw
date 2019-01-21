@@ -234,16 +234,16 @@
                                 (send e button-down?)
                                 (not (equal? pinned-trace hover-trace)))
                        (set! pinned-trace hover-trace)
-                       (when (= (send vpanel get-selection) 0)
-                         (send vpanel delete-child infobox)
-                         (send vpanel add-child trace-info-canvas)
-                         (send vpanel set-selection 1))
+                       (when (= (send tpanel get-selection) 0)
+                         (send tpanel delete-child infobox)
+                         (send tpanel add-child trace-info-canvas)
+                         (send tpanel set-selection 1))
                        (send trace-info-canvas refresh)
                        (update-message-bar))
                      ;; unsetting a pinned-trace
                      (when (and (not hover-trace)
                                 (send e button-down?))
-                       (when (= (send vpanel get-selection) 1)
+                       (when (= (send tpanel get-selection) 1)
                          (send trace-info-canvas refresh))
                        (set! pinned-trace #f)
                        (set! refresh-offscreen? #t)
@@ -306,23 +306,74 @@
 Consider using PYPYLOG=jit-summary...\n" trace-file)
           from-log-file)))
 
-  (define vpanel (new tab-panel%
-                      [choices (list "Summary" "Trace Codes")]
+  (define vpanel (new vertical-panel%
                       [parent panel]
+                      [alignment '(left top)]))
+
+  (define hpanel (new horizontal-panel%
+                      [parent vpanel]
+                      [min-height 34]
+                      [stretchable-height #f]
+                      [alignment '(right top)]))
+
+  (define left-h-panel (new horizontal-panel%
+                            [parent hpanel]
+                            [alignment '(left center)]))
+  (define main-message
+    (new message%
+         [parent left-h-panel]
+         [font main-msg-font]
+         [label "Welcome to TraceDraw!"]))
+
+  (define right-h-panel (new horizontal-panel%
+                            [parent hpanel]
+                            [alignment '(right center)]))
+
+  (define history-pinned-trace '()) ; stack of visited pinned-traces
+
+  (define back-button (new button%
+                           [parent right-h-panel]
+                           [label "Back"]
+                           [style '(deleted)]
+                           [stretchable-width #t]
+                           [callback (lambda (b ce)
+                                       (set! pinned-trace (car history-pinned-trace))
+                                       (set! history-pinned-trace
+                                             (or (and (null? history-pinned-trace) null)
+                                                 (cdr history-pinned-trace)))
+
+                                       (set! refresh-offscreen? #t)
+                                       (send c refresh)
+                                       (send c reset-hilites)
+                                       (update-message-bar)
+                                       (set! hilite-param #f)
+                                       (set! pinned-param #f)
+                                       (set! hover-tline #f)
+                                       (if (null? history-pinned-trace)
+                                           (send right-h-panel delete-child back-button)
+                                           (send back-button set-label
+                                                 (format "Back to : ~a" (get-label (car history-pinned-trace)))))
+                                       (send trace-info-canvas refresh))]))
+
+  (define-values (client-w client-h)
+    (send f get-client-size))
+
+  (define tpanel (new tab-panel%
+                      [choices (list "Summary" "Trace Codes")]
+                      [parent vpanel]
                       [alignment '(right top)]
-                      [stretchable-width #t]
-                      #;[min-width (/ total-w 2)]
+                      [stretchable-height #t]
                       [callback (lambda (b e)
                                   (if
                                    (= (send b get-selection) 0)
                                    ;; overall
                                    (let ()
-                                     (send vpanel add-child infobox)
-                                     (send vpanel delete-child trace-info-canvas))
+                                     (send tpanel add-child infobox)
+                                     (send tpanel delete-child trace-info-canvas))
                                    ;; trace
                                    (let ()
-                                     (send vpanel delete-child infobox)
-                                     (send vpanel add-child trace-info-canvas))))]))
+                                     (send tpanel delete-child infobox)
+                                     (send tpanel add-child trace-info-canvas))))]))
 
   (define hover-tline #f)
   (define prev-pinned-trace #f)
@@ -396,6 +447,14 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                (for ([b (in-list bridges)])
                                  (when (equal? (guard-id current-tline)
                                                (bridge-guard-id b))
+                                   (when (null? history-pinned-trace)
+                                     (send right-h-panel add-child back-button))
+                                   (send back-button set-label
+                                         (format "Back to : ~a" (get-label pinned-trace)))
+                                   (set! history-pinned-trace (cons pinned-trace
+                                                                    history-pinned-trace))
+
+                                   (send right-h-panel refresh)
                                    (set! pinned-trace b)
                                    (set! refresh-offscreen? #t)
                                    (send c refresh)
@@ -425,7 +484,7 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                          (refresh))))))))
 
            )
-         [parent vpanel]
+         [parent tpanel]
          [min-width (/ total-w 2)]
          [style '(hscroll vscroll deleted)]
          [paint-callback
@@ -457,7 +516,7 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
 
   (define infobox
     (new text-field%
-         [parent vpanel]
+         [parent tpanel]
          [label #f]
          [font summary-font]
          [min-width (/ total-w 2)]
