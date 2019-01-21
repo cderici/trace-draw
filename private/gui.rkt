@@ -259,6 +259,9 @@
                        (set! hilites (get-jump-deps hover-trace
                                                     trace-jumps
                                                     guard-exits)))
+                     (unless (and hover-param-trace
+                                  (memv hover-param-trace hilites))
+                       (set! hilites (cons hover-param-trace hilites)))
                      (set! refresh-offscreen? #t)
                      (low-priority-refresh)))
                  [parent panel]
@@ -382,6 +385,8 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
   (define hilite-param #f)
   (define pinned-param #f)
 
+  (define hover-param-trace #f) ;; a tracebox to look like a hover because of a tline param
+
   (define trace-info-canvas
     (new (class canvas%
            (super-new)
@@ -426,6 +431,10 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                         [current-tline (and (< line-#-ref (length codes))
                                             (list-ref codes line-#-ref))])
                    (set! hover-tline current-tline)
+                   (unless current-tline
+                     (set! hover-param-trace #f)
+                     (send c reset-hilites))
+
                    (when hover-tline
                      (let ([bounds (tline-hbounds current-tline)])
                        (define-values (prev-hilite-param prev-pinned-param)
@@ -456,11 +465,24 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
 
                                    (send right-h-panel refresh)
                                    (set! pinned-trace b)
-                                   (set! refresh-offscreen? #t)
-                                   (send c refresh)
                                    (send c reset-hilites)
                                    (update-message-bar)
                                    (refresh))))
+
+                             ;; switch traces again (jump)
+                             (when (and hover-param
+                                        (string-contains? hover-param "TargetToken"))
+                               (define target (get-target hover-param))
+                               (set! hover-param-trace target)
+                               (send c reset-hilites))
+
+                             ;; unset the hover-param-trace
+                             (when (or (not hover-param)
+                                       (and hover-param-trace
+                                            (not (string-contains? hover-param "TargetToken"))))
+                               (set! hover-param-trace #f)
+                               (send c reset-hilites))
+
                              ;; reset the pinned-param
                              (when (and hover-param
                                         (is-param? hover-param)
@@ -476,6 +498,9 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                (set! hilite-param hover-param)))
                            (begin
                              ;; unset all
+                             (set! hover-param-trace #f)
+                             (send c reset-hilites)
+
                              (set! hilite-param #f)
                              (when (send e button-down?)
                                (set! pinned-param #f))))

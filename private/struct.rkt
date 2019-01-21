@@ -66,3 +66,8 @@
 (define (is-jump? tline)
   (and (operation-tline? tline)
        (equal? (operation-tline-op tline) "jump")))
+
+(define (get-target param)
+  (if (string-contains? param "TargetToken")
+      (substring param 12 (sub1 (string-length param)))
+      param))
