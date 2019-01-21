@@ -456,25 +456,20 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                (for ([b (in-list bridges)])
                                  (when (equal? (guard-id current-tline)
                                                (bridge-guard-id b))
-                                   (when (null? history-pinned-trace)
-                                     (send right-h-panel add-child back-button))
-                                   (send back-button set-label
-                                         (format "Back to : ~a" (get-label pinned-trace)))
-                                   (set! history-pinned-trace (cons pinned-trace
-                                                                    history-pinned-trace))
-
-                                   (send right-h-panel refresh)
-                                   (set! pinned-trace b)
-                                   (send c reset-hilites)
-                                   (update-message-bar)
-                                   (refresh))))
+                                   (context-switch-to b))))
 
                              ;; switch traces again (jump)
                              (when (and hover-param
                                         (string-contains? hover-param "TargetToken"))
-                               (define target (get-target hover-param))
-                               (set! hover-param-trace target)
-                               (send c reset-hilites))
+                               (define target-label* (get-target hover-param))
+                               (define target-label (or (hash-ref inner-loop-of target-label* #f) target-label*))
+                               (set! hover-param-trace target-label)
+                               (send c reset-hilites)
+                               (when (send e button-down?)
+                                 (for ([t (in-list traces)])
+                                   (when (equal? (trace-label t) target-label)
+                                     (context-switch-to (or (hash-ref inner-loop-of t #f) t)))))
+                               )
 
                              ;; unset the hover-param-trace
                              (when (or (not hover-param)
@@ -565,6 +560,20 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                     (format "Run ~a / ~a times" cnt cnt-inner)
                     (format "Run ~a times" cnt)))])
       (send below-message set-label msg)))
+
+  (define (context-switch-to t)
+    (when (null? history-pinned-trace)
+      (send right-h-panel add-child back-button))
+    (send back-button set-label
+          (format "Back to : ~a" (get-label pinned-trace)))
+    (set! history-pinned-trace (cons pinned-trace
+                                     history-pinned-trace))
+
+    (send right-h-panel refresh)
+    (set! pinned-trace t)
+    (send c reset-hilites)
+    (update-message-bar)
+    (send trace-info-canvas refresh))
 
   (send f center 'both)
   (send f show #t)
