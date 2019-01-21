@@ -521,7 +521,7 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                             ([tline (in-list codes)])
                     (define new-w
                       (render-tline dc tline tline-#
-                                    hover-tline hilite-param pinned-param))
+                                    hover-tline hilite-param pinned-param labeled-counts))
                     (values (add1 tline-#) (max max-w new-w))))
 
 

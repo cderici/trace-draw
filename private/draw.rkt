@@ -211,7 +211,7 @@
   (render-regular dc r-paren start-x y text-color)
   (values (+ start-x paren-w) param-bounds))
 
-(define (render-tline dc tline tline-# hover-tline hilite-param pinned-param)
+(define (render-tline dc tline tline-# hover-tline hilite-param pinned-param lbl->counts)
   (send dc set-font t-font)
   (send dc set-text-foreground tline-color)
   (define hover? (eq? tline hover-tline))
@@ -268,7 +268,13 @@
             tline (hash-set (guard-hbounds tline)
                             s-id (cons start-x (+ start-x w-bridge)))))
          (set! start-x (+ start-x w-bridge))
-         (let ([s "(run N/A times, ~N/A%)"])
+         (let* ([cnt (hash-ref lbl->counts (guard-id tline) #f)]
+                [% (and cnt
+                        (let* ([guard-owner-lbl (guard-belongs-to tline)]
+                               [surrounding-run-count (hash-ref lbl->counts guard-owner-lbl #f)])
+                          (and surrounding-run-count
+                               (floor (inexact->exact (/ (* cnt 100) surrounding-run-count))))))]
+                [s (format "(run ~a times, ~~~a%)" (or cnt "N/A") (or % "N/A"))])
            (send dc set-font secondary-t-font)
            (send dc set-text-foreground "black")
            (define-values (w-times h d a) (send dc get-text-extent s))

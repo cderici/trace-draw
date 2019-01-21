@@ -74,7 +74,7 @@
   (let ([token-part (cadr (string-split label-line-str "TargetToken("))])
     (substring token-part 0 (- (string-length token-part) 2))))
 
-(define (extract-guard guard-line-str bridge-candidates)
+(define (extract-guard guard-line-str bridge-candidates belongs-lbl)
   (let* ([type (let ([t (regexp-match #px"guard[\\w]*" guard-line-str)]) (and t (car t)))]
          [id (let ([i (regexp-match #px"0x[\\w]+" guard-line-str)]) (and i (car i)))]
          [args (let* ([<str> (let ([s (regexp-match #px"\\(.*\\)" guard-line-str)]) (and s (car s)))]
@@ -85,7 +85,7 @@
          [jump-params
           (string-split (substring jump-params* 1 (sub1 (string-length jump-params*))) ", ")]
          [bridge? (hash-has-key? bridge-candidates id)])
-    (make-guard id guard-line-str type args jump-params bridge? #f)))
+    (make-guard id guard-line-str type args jump-params bridge? #f belongs-lbl)))
 
 (define (get-jump-info jump-line-str)
   (get-label-id jump-line-str))
@@ -181,7 +181,8 @@
          (make-debug-merge-point (car (string-split (cadr (string-split line-str ", '")) "')")))]
         ;; guard-tline
         [(string-contains? line-str " guard_")
-         (extract-guard line-str bridge-candidates)]
+         (let ([belongs-lbl (if are-we-in-inner-loop inner-label outer-label)])
+           (extract-guard line-str bridge-candidates belongs-lbl))]
         ;; assignment-tline
         [(string-contains? line-str " = ")
          (let ([lhs (string-trim (car (regexp-match #px" [\\w]+ " line-str)))]
