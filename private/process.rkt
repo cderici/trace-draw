@@ -196,7 +196,13 @@
                                           (and o (car o)))]
                                     [args (let ([a (regexp-match #px"\\(.*\\)" line-str)])
                                             (and a (string-split (substring (car a) 1 (sub1 (string-length (car a)))) ", ")))])
-                                (make-operation-tline op args #f))))]
+                                (let ([clean-args
+                                       (if (and (not (equal? op "label")) (not (equal? op "jump")))
+                                           args
+                                           (for/list ([ar (in-list args)])
+                                             (if (string-contains? ar "descr=TargetToken")
+                                                 (substring ar 6) ar)))])
+                                  (make-operation-tline op clean-args #f)))))]
         [else (error 'trace-line
                      (format "couldn't recognize this line :\n~a\n" line-str))]))
 
