@@ -68,10 +68,31 @@
          [parent main-panel]
          [alignment '(left center)]))
 
+  (define below-panel
+    (new horizontal-panel%
+         [parent main-panel]
+         [stretchable-height #f]
+         [alignment '(center center)]))
+
   (define below-message
     (new message%
-         [parent main-panel]
+         [parent below-panel]
          [label ""]))
+
+  (define below-controls
+    (new horizontal-panel%
+         [parent below-panel]
+         [alignment '(right center)]))
+
+  (define no-debug-tlines-check
+    (new check-box%
+         [label "Hide Interpreted Codes"]
+         [parent below-controls]
+         [callback (lambda (cb ce)
+                     (set! no-debug-tlines? (send cb get-value))
+                     (set! tline-offscreen #f)
+                     (set! refresh-tline-canvas? #t)
+                     (send trace-info-canvas refresh))]))
 
   (define refresh-offscreen? #t)
   (define offscreen #f)
@@ -396,6 +417,8 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
 
   (define hover-param-trace #f) ;; a tracebox to look like a hover because of a tline param
 
+  (define no-debug-tlines? #f)
+
   (define trace-info-canvas
     (new (class canvas%
            (super-new)
@@ -431,13 +454,16 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
              (define mouse-x (send e get-x))
              (define mouse-y (send e get-y))
              (when pinned-trace
-               (let ([codes (if (trace? pinned-trace)
-                                (trace-code pinned-trace)
-                                (bridge-code pinned-trace))])
-                 (let* ([line-#-ref (quotient (+ mouse-y dy) TLINE-H)]
-                        [current-tline (and (>= line-#-ref 0)
-                                            (< line-#-ref (length codes))
-                                            (list-ref codes line-#-ref))])
+               (let* ([codes* (if (trace? pinned-trace)
+                                  (trace-code pinned-trace)
+                                  (bridge-code pinned-trace))]
+                      [codes (if no-debug-tlines?
+                                 (filter (lambda (c) (not (debug-merge-point? c))) codes*)
+                                 codes*)]
+                      [line-#-ref (quotient (+ mouse-y dy) TLINE-H)]
+                      [current-tline (and (>= line-#-ref 0)
+                                          (< line-#-ref (length codes))
+                                          (list-ref codes line-#-ref))])
                    (set! hover-tline current-tline)
                    (unless current-tline
                      (set! hover-param-trace #f)
@@ -511,7 +537,7 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                     (equal? pinned-param prev-pinned-param))
                          (set! refresh-tline-canvas? #t)
                          (refresh)))
-                     (set! refresh-tline-canvas? #t))))))
+                     (set! refresh-tline-canvas? #t)))))
 
            )
          [parent tpanel]
@@ -543,9 +569,11 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
               [jump-target (if (trace? pinned-trace)
                                (trace-jump-target pinned-trace)
                                (bridge-jump-target pinned-trace))])
+
+          (define filtered-codes (if no-debug-tlines? (filter (lambda (c) (not (debug-merge-point? c))) codes) codes))
           (define-values (final-tline-# max-width)
             (for/fold ([tline-# 0][max-w 0])
-                      ([tline (in-list codes)])
+                      ([tline (in-list filtered-codes)])
               (define new-w
                 (render-tline dc tline tline-#
                               hover-tline hilite-param pinned-param labeled-counts))
