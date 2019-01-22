@@ -238,12 +238,15 @@
                          (send tpanel delete-child infobox)
                          (send tpanel add-child trace-info-canvas)
                          (send tpanel set-selection 1))
+                       (set! tline-offscreen #f)
+                       (set! refresh-tline-canvas? #t)
                        (send trace-info-canvas refresh)
                        (update-message-bar))
                      ;; unsetting a pinned-trace
                      (when (and (not hover-trace)
                                 (send e button-down?))
                        (when (= (send tpanel get-selection) 1)
+                         (set! refresh-tline-canvas? #t)
                          (send trace-info-canvas refresh))
                        (set! pinned-trace #f)
                        (set! refresh-offscreen? #t)
@@ -356,6 +359,8 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                            (send right-h-panel delete-child back-button)
                                            (send back-button set-label
                                                  (format "Back to : ~a" (get-label (car history-pinned-trace)))))
+                                       (set! tline-offscreen #f)
+                                       (set! refresh-tline-canvas? #t)
                                        (send trace-info-canvas refresh))]))
 
   (define-values (client-w client-h)
@@ -377,6 +382,10 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                    (let ()
                                      (send tpanel delete-child infobox)
                                      (send tpanel add-child trace-info-canvas))))]))
+
+  (define refresh-tline-canvas? #t)
+  (define tline-offscreen #f)
+  (define tline-offscreen-dc #f)
 
   (define hover-tline #f)
   (define prev-pinned-trace #f)
@@ -402,18 +411,16 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
              (define adj-h (- (* view-scale trace-h) h))
              (define sx (min 1 (max 0 (+ (* dx 1/40) (/ x adj-w)))))
              (define sy (min 1 (max 0 (+ (* dy 1/40) (/ y adj-h)))))
-             (define tx (and (not (= x (* sx adj-w)))
-                             sx))
-             (define ty (and (not (= y (* sy adj-h)))
-                             sy))
-             (when (or tx ty)
-               (scroll tx ty)))
+             (define tx (and (not (= x (* sx adj-w))) sx))
+             (define ty (and (not (= y (* sy adj-h))) sy))
+             (when (or tx ty) (scroll tx ty)))
            (define/override (on-char e)
              (for/or ([key-code (list (send e get-key-code)
                                       (send e get-other-shift-key-code)
                                       (send e get-other-altgr-key-code))])
                (and trace-h
                     (case key-code
+                      [(A a) (begin (printf "hele\n") (scroll 0 1))]
                       [(wheel-up up) (adjust-scroll 0 (- scroll-speed)) #t]
                       [(wheel-down down) (adjust-scroll 0 scroll-speed) #t]
                       [(wheel-left left) (adjust-scroll (- scroll-speed) 0) #t]
@@ -428,7 +435,8 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                 (trace-code pinned-trace)
                                 (bridge-code pinned-trace))])
                  (let* ([line-#-ref (quotient (+ mouse-y dy) TLINE-H)]
-                        [current-tline (and (< line-#-ref (length codes))
+                        [current-tline (and (>= line-#-ref 0)
+                                            (< line-#-ref (length codes))
                                             (list-ref codes line-#-ref))])
                    (set! hover-tline current-tline)
                    (unless current-tline
@@ -501,38 +509,57 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                (set! pinned-param #f))))
                        (unless (and (equal? hilite-param prev-hilite-param)
                                     (equal? pinned-param prev-pinned-param))
-                         (refresh))))))))
+                         (set! refresh-tline-canvas? #t)
+                         (refresh)))
+                     (set! refresh-tline-canvas? #t))))))
 
            )
          [parent tpanel]
          [min-width (/ total-w 2)]
          [style '(hscroll vscroll deleted)]
          [paint-callback
-          (lambda (c dc)
-            (when pinned-trace
-              (let ([codes (if (trace? pinned-trace)
-                               (trace-code pinned-trace)
-                               (bridge-code pinned-trace))]
-                    [jump-target (if (trace? pinned-trace)
-                                     (trace-jump-target pinned-trace)
-                                     (bridge-jump-target pinned-trace))])
-                (define-values (final-tline-# max-width)
-                  (for/fold ([tline-# 0][max-w 0])
-                            ([tline (in-list codes)])
-                    (define new-w
-                      (render-tline dc tline tline-#
-                                    hover-tline hilite-param pinned-param labeled-counts))
-                    (values (add1 tline-#) (max max-w new-w))))
+          (lambda (c t-dc)
+            (when refresh-tline-canvas?
+              (unless tline-offscreen
+                (draw-tlines t-dc)
+                (define-values (w h) (send t-dc get-size))
+                (set! tline-offscreen (send trace-info-canvas make-bitmap
+                                            (->int (* view-scale w))
+                                            (->int (* view-scale (+ h (* 3 TLINE-H))))))
+                (set! tline-offscreen-dc (send tline-offscreen make-dc)))
+              (set! refresh-tline-canvas? #f)
+
+              (define dc tline-offscreen-dc)
+              (send dc clear)
+              (send dc set-smoothing 'smoothed)
+              (draw-tlines dc))
+            (send t-dc draw-bitmap tline-offscreen 0 0))]))
+
+    (define (draw-tlines dc)
+      (when pinned-trace
+        (let ([codes (if (trace? pinned-trace)
+                         (trace-code pinned-trace)
+                         (bridge-code pinned-trace))]
+              [jump-target (if (trace? pinned-trace)
+                               (trace-jump-target pinned-trace)
+                               (bridge-jump-target pinned-trace))])
+          (define-values (final-tline-# max-width)
+            (for/fold ([tline-# 0][max-w 0])
+                      ([tline (in-list codes)])
+              (define new-w
+                (render-tline dc tline tline-#
+                              hover-tline hilite-param pinned-param labeled-counts))
+              (values (add1 tline-#) (max max-w new-w))))
 
 
-                (unless (eq? pinned-trace prev-pinned-trace)
-                  (set! trace-w max-width)
-                  (set! trace-h (* (+ final-tline-# GAP) TLINE-H))
-                  (send c init-auto-scrollbars
-                        (->int trace-w)
-                        (->int trace-h)
-                        0 0)
-                  (set! prev-pinned-trace pinned-trace)))))]))
+          (unless (eq? pinned-trace prev-pinned-trace)
+            (set! trace-w max-width)
+            (set! trace-h (* (+ final-tline-# GAP) TLINE-H))
+            (send trace-info-canvas init-auto-scrollbars
+                  (->int trace-w)
+                  (->int trace-h)
+                  0 0)
+            (set! prev-pinned-trace pinned-trace)))))
 
   (define infobox
     (new text-field%
@@ -574,6 +601,7 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
     (set! pinned-trace t)
     (send c reset-hilites)
     (update-message-bar)
+    (set! refresh-tline-canvas? #t)
     (send trace-info-canvas refresh))
 
   (send f center 'both)
