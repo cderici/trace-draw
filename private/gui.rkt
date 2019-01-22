@@ -629,6 +629,7 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
     (set! pinned-trace t)
     (send c reset-hilites)
     (update-message-bar)
+    (set! tline-offscreen #f)
     (set! refresh-tline-canvas? #t)
     (send trace-info-canvas refresh))
 
