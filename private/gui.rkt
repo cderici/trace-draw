@@ -587,7 +587,7 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                      (if inner-loop
                          (format "Run ~a / ~a times" cnt cnt-inner)
                          (format "Run ~a times" cnt)))])
-           (send below-message set-label msg))))
+           (send main-message set-label msg))))
 
   (define (context-switch-to t)
     (when (null? history-pinned-trace)
