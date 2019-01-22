@@ -1,8 +1,20 @@
 
-- scrolling on the right side panel is very inefficient
-- highlighting is bit wonky
-- reuse the labels extracted in the pre-process phase
+- add a functionality to say "highlight getfields", "highlight setfields" or "hide guards" etc.
 
+----------------- long term
+
+- make it able to compare two separate traces side by side (i.e. open two trace files at once)
+
+----------------- for implementation-
+
+- reuse the labels extracted in the pre-process phase
+- improve the pick-bridges-for in private/process to process all depth levels (not just the first two) (for the bridges guard-exiting to other bridges)
+- separate the traces and bridge-guard-ids in hilites
+
+----------------- DONE
+
+- DONE highlighting is bit wonky
+- DONE scrolling on the right side panel is very inefficient
 - DONE relativize the mouse position checks to find traces (scaling/scrolling is messing it up right now)
 - DONE set the total width/height based on trace/bridge numbers
 - DONE get the use counts of traces and draw them ordered
@@ -12,7 +24,3 @@
 - DONE make all the traces and bridges be found by mouse position
 - DONE click on a trace to open a window with all the trace codes
 
--for implementation-
-
-- improve the pick-bridges-for in private/process to process all depth levels (not just the first two) (for the bridges guard-exiting to other bridges)
-- separate the traces and bridge-guard-ids in hilites
