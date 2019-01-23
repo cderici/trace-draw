@@ -118,7 +118,7 @@
   (define (get-display-bound label)
     (or (hash-ref labeled-bounds-ht label #f)
         (hash-ref labeled-bounds-ht
-                  (hash-ref inner-loop-of label))))
+                  (hash-ref inner-loop-of label #f) #f)))
 
   (define (is-hilite? . labels)
     (for/or ([l (in-list labels)])
@@ -158,13 +158,14 @@
     (define bridge-bounds (get-display-bound (bridge-guard-id b)))
     (define target-bounds (get-display-bound (bridge-jump-target b)))
 
-    (connect dc
-             bridge-bounds
-             #f
-             (hash-has-key? inner-loop-of target-bounds)
-             target-bounds
-             #t
-             (is-hilite? (bridge-guard-id b) (bridge-jump-target b)))))
+    (when (and bridge-bounds target-bounds)
+      (connect dc
+               bridge-bounds
+               #f
+               (hash-has-key? inner-loop-of target-bounds)
+               target-bounds
+               #t
+               (is-hilite? (bridge-guard-id b) (bridge-jump-target b))))))
 
 (define (render-regular dc str x y [text-color tline-color])
   (send dc set-font t-font)
