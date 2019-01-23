@@ -506,9 +506,10 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                )
 
                              ;; unset the hover-param-trace
-                             (when (or (not hover-param)
-                                       (and hover-param-trace
-                                            (not (string-contains? hover-param "TargetToken"))))
+                             (when (and hover-param-trace
+                                        (or (not hover-param)
+                                            (and hover-param-trace
+                                                 (not (string-contains? hover-param "TargetToken")))))
                                (set! hover-param-trace #f)
                                (send c reset-hilites))
 
@@ -527,8 +528,9 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                                (set! hilite-param hover-param)))
                            (begin
                              ;; unset all
-                             (set! hover-param-trace #f)
-                             (send c reset-hilites)
+                             (when hover-param-trace
+                               (set! hover-param-trace #f)
+                               (send c reset-hilites))
 
                              (set! hilite-param #f)
                              (when (send e button-down?)
