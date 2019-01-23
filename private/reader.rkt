@@ -24,9 +24,10 @@
                             [parent loading]
                             [spacing 30]
                             [alignment '(center center)]))
+  (define oversized? (>= number-of-lines 1000000))
   (define status-bar (new gauge% [label #f]
                           [parent status-panel]
-                          [range number-of-lines]
+                          [range (if oversized? (ceiling (/ number-of-lines 10)) number-of-lines)]
                           [style '(horizontal vertical-label)]))
   (define msg (new message%
                    [label (format "Loading : ~a (~a lines)"
@@ -36,10 +37,10 @@
   (send loading center 'both)
   (send loading show #t)
   (send status-bar set-value 0)
-  (values status-bar loading))
+  (values status-bar loading oversized?))
 
 (define (read-all trace-file)
-  (define-values (status-bar loading) (init-gui trace-file))
+  (define-values (status-bar loading oversized?) (init-gui trace-file))
   ;; MAIN INITIAL LOOP
   (define all-loops null)
   (define all-bridges null)
@@ -55,6 +56,8 @@
   (define current-bridge-lines null)
   (define current-summary-lines null)
   (define current-backend-count-lines null)
+
+  (define gauge-oversize-counter 0)
 
   (with-input-from-file trace-file
     (lambda ()
@@ -114,8 +117,13 @@
                 (set! current-backend-count-lines null))
               (set! current-backend-count-lines (cons ln current-backend-count-lines))))
 
-
-        (send status-bar set-value (add1 (send status-bar get-value))))))
+        (if oversized?
+            (if (>= gauge-oversize-counter 10)
+                (begin
+                  (send status-bar set-value (add1 (send status-bar get-value)))
+                  (set! gauge-oversize-counter 0))
+                (set! gauge-oversize-counter (add1 gauge-oversize-counter)))
+            (send status-bar set-value (add1 (send status-bar get-value)))))))
 
   (send loading show #f)
   (eprintf "DONE in ")
