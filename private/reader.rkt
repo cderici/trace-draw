@@ -56,8 +56,8 @@
                [next #f]
                [acc null]
                #:result (if (or (not next) skip?)
-                            (values (reverse acc) line-count)
-                            (values (reverse (cons next acc)) line-count)))
+                            (values (reverse acc) (add1 line-count))
+                            (values (reverse (cons next acc)) (add1 line-count))))
               ([ln iter])
       (when (or (not oversized?) (= (modulo line-count 10) 0))
         (send status-bar set-value (add1 (send status-bar get-value))))
@@ -69,7 +69,7 @@
   (with-input-from-file trace-file
     (lambda ()
       (define iter (in-lines))
-      (for/fold ([line-count 0])
+      (for/fold ([line-count 1])
                 ([ln iter])
         (define r (string-contains? ln " {jit-"))
         (define new-line-count
@@ -77,22 +77,22 @@
                    (cond
                      [(string-contains? ln " {jit-log-opt-loop")
                       (let-values ([(acc n-line-count)
-                                    (parse-seq "jit-log-opt-loop}" iter #t line-count)])
+                                    (parse-seq "jit-log-opt-loop}" iter #t (add1 line-count))])
                         (push! acc all-loops) n-line-count)]
                      [(string-contains? ln " {jit-log-opt-bridge")
                       (let-values ([(acc n-line-count)
-                                    (parse-seq "jit-log-opt-bridge}" iter #t line-count)])
+                                    (parse-seq "jit-log-opt-bridge}" iter #t (add1 line-count))])
                         (push! acc all-bridges) n-line-count)]
                      [(string-contains? ln " {jit-summary")
                       (let-values ([(acc n-line-count)
-                                    (parse-seq "jit-summary}" iter #f line-count)])
+                                    (parse-seq "jit-summary}" iter #f (add1 line-count))])
                         (set! jit-summary-lines acc) n-line-count)]
                      [(string-contains? ln " {jit-backend-counts")
                       (let-values ([(acc n-line-count)
-                                    (parse-seq "jit-backend-counts}" iter #f line-count)])
+                                    (parse-seq "jit-backend-counts}" iter #f (add1 line-count))])
                         (set! jit-backend-count-lines acc) n-line-count)]
-                     [else line-count]))
-              line-count))
+                     [else (add1 line-count)]))
+              (add1 line-count)))
         (when (or (not oversized?) (= (modulo new-line-count 10) 0))
           (send status-bar set-value (add1 (send status-bar get-value))))
         new-line-count)))
