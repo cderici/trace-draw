@@ -28,7 +28,7 @@
   (define status-bar (new gauge% [label #f]
                           [parent status-panel]
                           [range (if oversized?
-                                     (+ 10 (inexact->exact (ceiling (/ number-of-lines 10))))
+                                     (inexact->exact (ceiling (/ number-of-lines 10)))
                                      number-of-lines)]
                           [style '(horizontal vertical-label)]))
   (define msg (new message%
@@ -51,40 +51,51 @@
   (define jit-summary-lines null)
   (define jit-backend-count-lines null)
 
-  (define (parse-seq close-str iter skip? incr-gauge?)
-    #;(define close-str (string-append " jit" close "}"))
-    (for/fold ([next #f]
+  (define (parse-seq close-str iter skip? current-line-count)
+    (for/fold ([line-count current-line-count]
+               [next #f]
                [acc null]
-               #:result (if (or (not next) skip?) (reverse acc) (reverse (cons next acc))))
+               #:result (if (or (not next) skip?)
+                            (values (reverse acc) line-count)
+                            (values (reverse (cons next acc)) line-count)))
               ([ln iter])
-      (when incr-gauge?
+      (when (or (not oversized?) (= (modulo line-count 10) 0))
         (send status-bar set-value (add1 (send status-bar get-value))))
       #:break (string-contains? ln close-str)
-      (values ln (if next (cons next acc) acc))))
+      (values (add1 line-count) ln (if next (cons next acc) acc))))
 
   (define-syntax-rule (push! v l) (set! l (cons v l)))
 
   (with-input-from-file trace-file
     (lambda ()
       (define iter (in-lines))
-      (for/fold ([line-counter 0])
+      (for/fold ([line-count 0])
                 ([ln iter])
         (define r (string-contains? ln " {jit-"))
-        (define incr-gauge (or (not oversized?) (= (modulo line-counter 10) 0)))
-        (when r
-          (cond
-            [(string-contains? ln " {jit-log-opt-loop")
-             (push! (parse-seq "jit-log-opt-loop}" iter #t incr-gauge) all-loops)]
-            [(string-contains? ln " {jit-log-opt-bridge")
-             (push! (parse-seq "jit-log-opt-bridge}" iter #t incr-gauge) all-bridges)]
-            [(string-contains? ln " {jit-summary")
-             (set! jit-summary-lines (parse-seq "jit-summary}" iter #f incr-gauge))]
-            [(string-contains? ln " {jit-backend-counts")
-             (set! jit-backend-count-lines (parse-seq "jit-backend-counts}" iter #f incr-gauge))]
-            [else (void)]))
-        (when incr-gauge
+        (define new-line-count
+          (or (and r
+                   (cond
+                     [(string-contains? ln " {jit-log-opt-loop")
+                      (let-values ([(acc n-line-count)
+                                    (parse-seq "jit-log-opt-loop}" iter #t line-count)])
+                        (push! acc all-loops) n-line-count)]
+                     [(string-contains? ln " {jit-log-opt-bridge")
+                      (let-values ([(acc n-line-count)
+                                    (parse-seq "jit-log-opt-bridge}" iter #t line-count)])
+                        (push! acc all-bridges) n-line-count)]
+                     [(string-contains? ln " {jit-summary")
+                      (let-values ([(acc n-line-count)
+                                    (parse-seq "jit-summary}" iter #f line-count)])
+                        (set! jit-summary-lines acc) n-line-count)]
+                     [(string-contains? ln " {jit-backend-counts")
+                      (let-values ([(acc n-line-count)
+                                    (parse-seq "jit-backend-counts}" iter #f line-count)])
+                        (set! jit-backend-count-lines acc) n-line-count)]
+                     [else line-count]))
+              line-count))
+        (when (or (not oversized?) (= (modulo new-line-count 10) 0))
           (send status-bar set-value (add1 (send status-bar get-value))))
-        (add1 line-counter))))
+        new-line-count)))
 
   (send loading show #f)
   (eprintf "DONE in ")
