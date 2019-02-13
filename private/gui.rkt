@@ -3,6 +3,7 @@
 (require racket/gui/base
          racket/class
          racket/string
+         racket/path
          "draw.rkt"
          "struct.rkt"
          "config.rkt"
@@ -54,7 +55,7 @@
             (* (length bridges) (+ b-height Y-GAP))))) ; #;(* 2 (- screen-h 400))
 
   (define f (new frame%
-                 [label "Trace Draw"]
+                 [label (format "Trace Draw : ~a" (file-name-from-path trace-file))]
                  [width (- screen-w 100)]
                  [height (- screen-h 100)]))
 
