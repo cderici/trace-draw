@@ -263,6 +263,7 @@
                        (set! tline-offscreen #f)
                        (set! refresh-tline-canvas? #t)
                        (send trace-info-canvas refresh)
+                       (reset-hilites)
                        (update-message-bar))
                      ;; unsetting a pinned-trace
                      (when (and (not hover-trace)
