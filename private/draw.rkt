@@ -130,12 +130,17 @@
     (define self-display-bounds (get-display-bound (trace-label t)))
     (define target-display-bounds (get-display-bound target-label))
 
-    (connect dc
-             self-display-bounds
-             (equal? self-display-bounds target-display-bounds)
-             (hash-has-key? inner-loop-of target-label)
-             target-display-bounds
-             #f (is-hilite? (trace-label t) target-label)))
+    (unless (or (not self-display-bounds)
+                (not target-display-bounds))
+      ;; These happen because of selecting only a few mostly used
+      ;; traces/bridges, i.e. a target jump of a selected trace/bridge
+      ;; may not be among the selected ones.
+      (connect dc
+               self-display-bounds
+               (equal? self-display-bounds target-display-bounds)
+               (hash-has-key? inner-loop-of target-label)
+               target-display-bounds
+               #f (is-hilite? (trace-label t) target-label))))
 
   ;; Draw trace to bridge jumps (guard exits)
   (for ([(t-b bridges) (in-hash guard-exits)])
@@ -149,16 +154,19 @@
                                      t-b-label))
         (define bridge-display-bounds (get-display-bound b))
 
-        (connect dc self-display-bounds (bridge? t-b)
-                 #f bridge-display-bounds
-                 #f (is-hilite? t-b-label b)))))
+    (unless (or (not self-display-bounds)
+                (not bridge-display-bounds))
+      (connect dc self-display-bounds (bridge? t-b)
+               #f bridge-display-bounds
+               #f (is-hilite? t-b-label b))))))
 
   ;; Draw bridge to trace jumps
   (for ([b (in-list bridges)])
     (define bridge-bounds (get-display-bound (bridge-guard-id b)))
     (define target-bounds (get-display-bound (bridge-jump-target b)))
 
-    (when (and bridge-bounds target-bounds)
+    (unless (or (not bridge-bounds)
+                (not target-bounds))
       (connect dc
                bridge-bounds
                #f
