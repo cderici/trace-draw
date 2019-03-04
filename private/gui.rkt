@@ -106,8 +106,8 @@
         (if no-count?
             traces
             (sort traces (lambda (t1 t2)
-                           (> (trace-use-count t1)
-                              (trace-use-count t2))))))
+                           (> (if (trace-inner-loop t1) (trace-use-count (trace-inner-loop t1)) (trace-use-count t1))
+                              (if (trace-inner-loop t2) (trace-use-count (trace-inner-loop t2)) (trace-use-count t2)))))))
       (define-values (new-ht y-entry-next y-trace-next)
         (for/fold ([ht (hash)]
                    [y-entry y-init]
