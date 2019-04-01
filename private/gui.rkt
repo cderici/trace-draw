@@ -15,6 +15,7 @@
 
 (define (make-gui #:traces trace-lines
                   #:bridges bridge-lines
+                  #:max-trace-shown max-trace-shown
                   #:jit-summary jit-summary
                   #:jit-counts jit-count-lines
                   #:trace-file-name trace-file)
@@ -31,7 +32,7 @@
 
   (define traces
     (pick-most-used-traces trace-candidates
-                           jit-counts labeled-counts 20
+                           jit-counts labeled-counts max-trace-shown
                            bridge-candidates
                            no-count?))
 
