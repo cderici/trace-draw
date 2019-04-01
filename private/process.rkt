@@ -185,11 +185,18 @@
            (extract-guard line-str bridge-candidates belongs-lbl))]
         ;; assignment-tline
         [(string-contains? line-str " = ")
-         (let ([lhs (string-trim (car (regexp-match #px" [\\w]+ " line-str)))]
-               [op (let ([o (regexp-match* #px"[\\w]+" line-str)]) (and o (list-ref o 2)))]
-               [args (let ([a (regexp-match #px"\\(.*\\)" line-str)])
-                       (and a (string-split (substring (car a) 1 (sub1 (string-length (car a)))) ", ")))])
-           (make-assignment-tline lhs op args #f))]
+         (let ([usual-line? (regexp-match #px" [\\w]+ " line-str)])
+           (if usual-line?
+               (let ([lhs (string-trim (car (regexp-match #px" [\\w]+ " line-str)))]
+                     [op (let ([o (regexp-match* #px"[\\w]+" line-str)]) (and o (list-ref o 2)))]
+                     [args (let ([a (regexp-match #px"\\(.*\\)" line-str)])
+                             (and a (string-split (substring (car a) 1 (sub1 (string-length (car a)))) ", ")))])
+                 (make-assignment-tline lhs op args #f))
+               (let* ([splt (string-split line-str " = ")]
+                      [lhs (car splt)]
+                      [op (cadr splt)]
+                      [args null])
+                 (make-assignment-tline lhs op args #f))))]
         ;; operation-t-line
         [(regexp-match #px"[\\w]+\\(.*\\)" line-str)
          => (lambda (ln) (and ln
