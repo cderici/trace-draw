@@ -21,17 +21,24 @@
       (map (lambda (c) (process-trace-lines c lbl->counts bridge-candidates)) (hash-values candidates))
       ;; ASSUMES : jit-counts doesn't contain duplicate counts
       ;; (i.e. no two traces that are used the same many times) (cross-fingers)
-      (let* ([l (hash-count jit-counts)]
-             [chosen-counts (take (sort (hash-keys jit-counts) >) (min n l))]
+
+      ;; jit-counts include the bridge counts too, but we're picking traces now
+      (let* ([only-trace-counts (for/fold ([trace-counts (hash)])
+                                          ([(cnt lbl) (in-hash jit-counts)])
+                                  (if (string-contains? lbl "0x")
+                                      trace-counts
+                                      (hash-set trace-counts cnt lbl)))]
+             [l (hash-count only-trace-counts)]
+             [chosen-counts (take (sort (hash-keys only-trace-counts) >) (min n l))]
              [chosen-labels (for/hash ([c (in-list chosen-counts)])
-                              (values c (hash-ref jit-counts c)))])
+                              (values c (hash-ref only-trace-counts c)))])
         (for/fold ([traces null])
-                  ([(lbls lines) (in-hash candidates)])
-          (or (for/or ([(cnt cl) (in-hash chosen-labels)])
-                (for/or ([l (in-list lbls)])
-                  (and (equal? cl l)
-                       (cons (process-trace-lines lines lbl->counts bridge-candidates) traces))))
-              traces)))))
+                  ([(cnt lbl) (in-hash chosen-labels)])
+          ; should be impossible to get a #f from the following for/or
+          (for/or ([(lbls lines) (in-hash candidates)])
+            (for/or ([l (in-list lbls)])
+              (and (equal? lbl l)
+                   (cons (process-trace-lines lines lbl->counts bridge-candidates) traces))))))))
 
 (define (pick-bridges-for traces bridge-candidates lbl->counts)
   (define processed (make-hash))
