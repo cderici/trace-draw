@@ -35,10 +35,13 @@
         (for/fold ([traces null])
                   ([(cnt lbl) (in-hash chosen-labels)])
           ; should be impossible to get a #f from the following for/or
-          (for/or ([(lbls lines) (in-hash candidates)])
-            (for/or ([l (in-list lbls)])
-              (and (equal? lbl l)
-                   (cons (process-trace-lines lines lbl->counts bridge-candidates) traces))))))))
+          ; # FIXME entry bridge/entry for a peeled loop?
+          (or
+           (for/or ([(lbls lines) (in-hash candidates)])
+             (for/or ([l (in-list lbls)])
+               (and (equal? lbl l)
+                    (cons (process-trace-lines lines lbl->counts bridge-candidates) traces))))
+           traces)))))
 
 (define (pick-bridges-for traces bridge-candidates lbl->counts)
   (define processed (make-hash))
