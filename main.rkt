@@ -21,7 +21,7 @@
    #:trace-file-name trace-file))
 
 (module+ main
-  (define max-trace-shown 20)
+  (define max-trace-shown "20")
 
   (command-line
    #:once-each
