@@ -606,10 +606,17 @@
             (set! prev-pinned-trace pinned-trace)))))
 
   (define infobox-content
-    (format "Trace file                                         : ~a
-# of most used loops showing     : ~a
+    (format "
+Trace file                                :      ~a
 
-~a" file-name max-trace-shown summary))
+~a
+
+~a" file-name (if no-count?
+                  "No count info found. Displaying everything we can find."
+                  (format "There are ~a loops in the trace log.\nDisplaying ~a, along with every associated bridge.\nOrdered from top to bottom by loop counts."
+                          (length traces)
+                          total-number-of-loops))
+            summary))
 
   (define infobox
     (new text-field%
