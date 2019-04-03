@@ -3,6 +3,7 @@
 (require racket/gui/base
          racket/class
          racket/string
+         racket/format
          racket/path
          "draw.rkt"
          "struct.rkt"
@@ -55,8 +56,10 @@
        (max (* (length traces) (+ t-height Y-GAP))
             (* (length bridges) (+ b-height Y-GAP))))) ; #;(* 2 (- screen-h 400))
 
+  (define file-name (file-name-from-path trace-file))
+
   (define f (new frame%
-                 [label (format "Trace Draw : ~a" (file-name-from-path trace-file))]
+                 [label (format "Trace Draw : ~a" file-name)]
                  [width (- screen-w 100)]
                  [height (- screen-h 100)]))
 
@@ -329,12 +332,16 @@
         0.0 0.0)
 
   (define summary
-    (let ([from-log-file (string-join (map string-trim jit-summary) "\n")])
-      (if (null? jit-summary)
-          (format "No jit-summary is provided in the input : \"~a\"
-
-Consider using PYPYLOG=jit-summary...\n" trace-file)
-          from-log-file)))
+    (if (null? jit-summary)
+        (format "No jit-summary is provided in the input : \"~a\"\n\nConsider using PYPYLOG=jit-summary...\n" trace-file)
+        ;; FIXME : change the "infobox" to be a canvas and draw the
+        ;; text manually to align things
+        (string-join
+         (map (lambda (l-r)
+                (string-append
+                 (~a (car l-r) #:width 55 #:align 'left #:right-pad-string " . ")
+                 (~a (cdr l-r) #:min-width 15 #:align 'left #:right-pad-string " ")))
+              jit-summary) "\n")))
 
   (define vpanel (new vertical-panel%
                       [parent panel]
@@ -594,6 +601,12 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
                   0 0)
             (set! prev-pinned-trace pinned-trace)))))
 
+  (define infobox-content
+    (format "Trace file                                         : ~a
+# of most used loops showing     : ~a
+
+~a" file-name max-trace-shown summary))
+
   (define infobox
     (new text-field%
          [parent tpanel]
@@ -601,8 +614,8 @@ Consider using PYPYLOG=jit-summary...\n" trace-file)
          [font summary-font]
          [min-width (/ total-w 2)]
          [callback (lambda (tf ce) ; not changable
-                     (send tf set-value summary))]
-         [init-value summary]
+                     (send tf set-value infobox-content))]
+         [init-value infobox-content]
          [style '(multiple hscroll)]))
 
   (define (update-message-bar)

@@ -48,7 +48,7 @@
   ;; MAIN INITIAL LOOP
   (define all-loops null)
   (define all-bridges null)
-  (define jit-summary-lines null)
+  (define jit-summary null)
   (define jit-backend-count-lines null)
 
   (define (parse-seq close-str iter skip? current-line-count)
@@ -86,7 +86,15 @@
                      [(string-contains? ln " {jit-summary")
                       (let-values ([(acc n-line-count)
                                     (parse-seq "jit-summary}" iter #f (add1 line-count))])
-                        (set! jit-summary-lines acc) n-line-count)]
+                        (set! jit-summary
+                              (for/list ([a (in-list acc)])
+                                (let ([splt (string-split a "\t")])
+                                  (if (= (length splt) 3)
+                                      (cons (string-trim (string-normalize-spaces (car splt)) ":")
+                                            (string-normalize-spaces (caddr splt)))
+                                      (cons (string-trim (string-normalize-spaces (car splt)) ":")
+                                            (string-normalize-spaces (cadr splt)))))))
+                        n-line-count)]
                      [(string-contains? ln " {jit-backend-counts")
                       (let-values ([(acc n-line-count)
                                     (parse-seq "jit-backend-counts}" iter #f (add1 line-count))])
@@ -105,5 +113,5 @@
 
   (values ordered-loop-lines
           ordered-bridge-lines
-          jit-summary-lines
+          jit-summary
           jit-backend-count-lines))
