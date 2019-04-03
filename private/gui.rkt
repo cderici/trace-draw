@@ -26,14 +26,18 @@
 
   ; mapping from numbers (counts) -> trace-labels
   ; and   ; trace-labels -> counts
-  (define-values (jit-counts labeled-counts)
+  (define-values (trace-blocks extra-entry-bridges jit-counts labeled-counts)
     (process-jit-counts jit-count-lines))
 
   (define no-count? (null? jit-count-lines))
 
+  (define total-number-of-loops (+ (length trace-blocks) (length extra-entry-bridges)))
+
   (define traces
     (pick-most-used-traces trace-candidates
                            jit-counts labeled-counts max-trace-shown
+                           trace-blocks
+                           extra-entry-bridges
                            bridge-candidates
                            no-count?))
 

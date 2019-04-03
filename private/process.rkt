@@ -16,32 +16,55 @@
 (define entry-bridge-count 0)
 
 ;; (hash ) jit-counts number -> (listof traces)
-(define (pick-most-used-traces candidates jit-counts lbl->counts n bridge-candidates [no-count-info #f])
+(define (pick-most-used-traces candidates jit-counts lbl->counts N
+                               trace-blocks extra-entry-bridges
+                               bridge-candidates [no-count-info #f])
   (if no-count-info
       (map (lambda (c) (process-trace-lines c lbl->counts bridge-candidates)) (hash-values candidates))
       ;; ASSUMES : jit-counts doesn't contain duplicate counts
       ;; (i.e. no two traces that are used the same many times) (cross-fingers)
+      (let* ([chosen-blocks
+              (map cdr
+                   (take
+                    (sort
+                     (for/fold ([block-counts null])
+                               ([block (in-list trace-blocks)])
+                       (let ([cnt (+ (hash-ref lbl->counts (trace-block-entry-label block))
+                                     (hash-ref lbl->counts (trace-block-outer-label block))
+                                     (hash-ref lbl->counts (trace-block-inner-label block)))])
+                         (cons (cons cnt block) block-counts)))
+                     (lambda (a b) (> (car a) (car b))))
+                    (min N (length trace-blocks))))]
+             ;; if trace-blocks are less than N, try to get more from the extra entry bridges
+             [from-extra-entry
+              (if (>= (length trace-blocks) N)
+                  null
+                  (map (lambda (chosen-l-c)
+                         (process-trace-lines
+                          (hash-ref candidates (list (car chosen-l-c)))
+                          lbl->counts bridge-candidates))
+                       (take
+                        (sort
+                         (map (lambda (ebl) (cons ebl (hash-ref lbl->counts ebl))) extra-entry-bridges)
+                         (lambda (a b) (> (cdr a) (cdr b))))
+                        (min (- N (length trace-blocks)) (length extra-entry-bridges)))))])
 
-      ;; jit-counts include the bridge counts too, but we're picking traces now
-      (let* ([only-trace-counts (for/fold ([trace-counts (hash)])
-                                          ([(cnt lbl) (in-hash jit-counts)])
-                                  (if (string-contains? lbl "0x")
-                                      trace-counts
-                                      (hash-set trace-counts cnt lbl)))]
-             [l (hash-count only-trace-counts)]
-             [chosen-counts (take (sort (hash-keys only-trace-counts) >) (min n l))]
-             [chosen-labels (for/hash ([c (in-list chosen-counts)])
-                              (values c (hash-ref only-trace-counts c)))])
-        (for/fold ([traces null])
-                  ([(cnt lbl) (in-hash chosen-labels)])
-          ; should be impossible to get a #f from the following for/or
-          ; # FIXME entry bridge/entry for a peeled loop?
-          (or
-           (for/or ([(lbls lines) (in-hash candidates)])
-             (for/or ([l (in-list lbls)])
-               (and (equal? lbl l)
-                    (cons (process-trace-lines lines lbl->counts bridge-candidates) traces))))
-           traces)))))
+        (append
+         (for/fold ([traces null])
+                   ([block (in-list chosen-blocks)])
+           (let ([block-lines
+                  (hash-ref candidates
+                            (list (trace-block-inner-label block) (trace-block-outer-label block)))]
+                 [entry-lines
+                  (hash-ref candidates (list (trace-block-entry-label block)) #f)])
+             (if entry-lines
+                 (cons (process-trace-lines block-lines lbl->counts bridge-candidates)
+                       (cons
+                        (process-trace-lines entry-lines lbl->counts bridge-candidates)
+                        traces))
+                 (cons (process-trace-lines block-lines lbl->counts bridge-candidates)
+                       traces))))
+         from-extra-entry))))
 
 (define (pick-bridges-for traces bridge-candidates lbl->counts)
   (define processed (make-hash))
