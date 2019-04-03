@@ -139,7 +139,14 @@
     (hash-set bridge-candidates guard-id bridge-lines-str)))
 
 (define (process-jit-counts jit-count-lines)
-  (for/fold ([count->lbl (hash)]
+  ;; (define-struct trace-block
+  ;;   (entry-number outer-label inner-label))
+  (define seen-entry #f)
+  (define seen-token #f)
+
+  (for/fold ([blocks null]
+             [extra-entry-bridges null]
+             [count->lbl (hash)]
              [lbl->count (hash)])
             ([line-str (in-list jit-count-lines)])
     (cond
@@ -147,23 +154,46 @@
        (let* ([f (string-split line-str "):")]
               [cnt (string->number (cadr f))]
               [lbl (car (string-split (car f) "TargetToken("))])
-         (values (hash-set count->lbl cnt lbl)
-                 (hash-set lbl->count lbl cnt)))]
+         (if seen-token
+             (let ([new-blocks (cons (make-trace-block seen-entry seen-token lbl) blocks)])
+               (set! seen-entry #f)
+               (set! seen-token #f)
+               (values new-blocks
+                       extra-entry-bridges
+                       (hash-set count->lbl cnt lbl)
+                       (hash-set lbl->count lbl cnt)))
+             (begin
+               (set! seen-token lbl)
+               (values blocks
+                       extra-entry-bridges
+                       (hash-set count->lbl cnt lbl)
+                       (hash-set lbl->count lbl cnt)))))]
       [(string-contains? line-str "entry ")
        (let* ([f (string-split line-str ":")]
               [cnt (string->number (cadr f))]
               [lbl (format "Loop ~a" (cadr (string-split (car f) " ")))])
-         (values (hash-set count->lbl cnt lbl)
-                 (hash-set lbl->count lbl cnt)))]
+         (let ([new-b (if seen-entry
+                          (cons seen-entry extra-entry-bridges)
+                          extra-entry-bridges)])
+           (set! seen-entry lbl)
+           (set! seen-token #f)
+           (values blocks
+                   new-b
+                   (hash-set count->lbl cnt lbl)
+                   (hash-set lbl->count lbl cnt))))]
       [(string-contains? line-str "bridge ")
        (let* ([nums (regexp-match* #px"[0-9]+" line-str)]
               [lbl (string-append
                     "0x" (number->string
                           (string->number (car nums)) 16))]
               [cnt (string->number (cadr nums))])
-         (values (hash-set count->lbl cnt lbl)
+         (set! seen-entry #f)
+         (set! seen-token #f)
+         (values blocks
+                 extra-entry-bridges
+                 (hash-set count->lbl cnt lbl)
                  (hash-set lbl->count lbl cnt)))]
-      [else (values count->lbl lbl->count)])))
+      [else (values blocks extra-entry-bridges count->lbl lbl->count)])))
 
 (define (process-trace-internals trace-lines-str bridge-candidates [for-a-bridge? #f])
   (for/fold ([is-entry-bridge? #f]

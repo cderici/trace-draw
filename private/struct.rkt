@@ -3,6 +3,9 @@
 
 (provide (all-defined-out))
 
+(define-struct trace-block 
+  (entry-label outer-label inner-label))
+
 (define-struct trace (label         ; number
                       is-entry?     ; boolean
                       inner-loop    ; #f or inner trace
