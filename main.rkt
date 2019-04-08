@@ -25,7 +25,7 @@
 
   (command-line
    #:once-each
-   [("--max-trace") num "Maximum number of most used traces to show in gui" (set! max-trace-shown num)]
+   [("--show") num "Maximum number of most used traces to show in gui" (set! max-trace-shown num)]
    #:args (trace-file)
    (unless (file-exists? trace-file)
      (error "trace-draw : No such file or directory"))
