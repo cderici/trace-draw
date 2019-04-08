@@ -169,6 +169,7 @@
 
   (for/fold ([blocks null]
              [extra-entry-bridges null]
+             [trace-count 0]
              [count->lbl (hash)]
              [lbl->count (hash)])
             ([line-str (in-list jit-count-lines)])
@@ -183,12 +184,14 @@
                (set! seen-token #f)
                (values new-blocks
                        extra-entry-bridges
+                       trace-count
                        (hash-set count->lbl cnt lbl)
                        (hash-set lbl->count lbl cnt)))
              (begin
                (set! seen-token lbl)
                (values blocks
                        extra-entry-bridges
+                       trace-count
                        (hash-set count->lbl cnt lbl)
                        (hash-set lbl->count lbl cnt)))))]
       [(string-contains? line-str "entry ")
@@ -202,6 +205,7 @@
            (set! seen-token #f)
            (values blocks
                    new-b
+                   (add1 trace-count)
                    (hash-set count->lbl cnt lbl)
                    (hash-set lbl->count lbl cnt))))]
       [(string-contains? line-str "bridge ")
@@ -214,9 +218,10 @@
          (set! seen-token #f)
          (values blocks
                  extra-entry-bridges
+                 trace-count
                  (hash-set count->lbl cnt lbl)
                  (hash-set lbl->count lbl cnt)))]
-      [else (values blocks extra-entry-bridges count->lbl lbl->count)])))
+      [else (values blocks extra-entry-bridges trace-count count->lbl lbl->count)])))
 
 (define (process-trace-internals trace-lines-str bridge-candidates [for-a-bridge? #f])
   (for/fold ([is-entry-bridge? #f]

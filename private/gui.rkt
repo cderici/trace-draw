@@ -26,12 +26,10 @@
 
   ; mapping from numbers (counts) -> trace-labels
   ; and   ; trace-labels -> counts
-  (define-values (trace-blocks extra-entry-bridges jit-counts labeled-counts)
+  (define-values (trace-blocks extra-entry-bridges total-number-of-loops jit-counts labeled-counts)
     (process-jit-counts jit-count-lines))
-
+  
   (define no-count? (null? jit-count-lines))
-
-  (define total-number-of-loops (+ (length trace-blocks) (length extra-entry-bridges)))
 
   (define traces
     (pick-most-used-traces trace-candidates
@@ -614,8 +612,8 @@ Trace file                                :      ~a
 ~a" file-name (if no-count?
                   "No count info found. Displaying everything we can find."
                   (format "There are ~a loops in the trace log.\nDisplaying ~a, along with every associated bridge.\nOrdered from top to bottom by loop counts."
-                          (length traces)
-                          total-number-of-loops))
+                          total-number-of-loops
+                          (length traces)))
             summary))
 
   (define infobox
