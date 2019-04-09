@@ -27,7 +27,7 @@
   ; mapping from numbers (counts) -> trace-labels
   ; and   ; trace-labels -> counts
   (define-values (trace-blocks extra-entry-bridges total-number-of-loops jit-counts labeled-counts)
-    (process-jit-counts jit-count-lines))
+    (process-jit-counts jit-count-lines trace-candidates))
   
   (define no-count? (null? jit-count-lines))
 

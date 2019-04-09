@@ -161,7 +161,7 @@
 
     (hash-set bridge-candidates guard-id bridge-lines-str)))
 
-(define (process-jit-counts jit-count-lines)
+(define (process-jit-counts jit-count-lines candidates)
   ;; (define-struct trace-block
   ;;   (entry-number outer-label inner-label))
   (define seen-entry #f)
@@ -199,7 +199,9 @@
               [cnt (string->number (cadr f))]
               [lbl (format "Loop ~a" (cadr (string-split (car f) " ")))])
          (let ([new-b (if seen-entry
-                          (cons seen-entry extra-entry-bridges)
+                          (if (hash-ref candidates (list seen-entry) #f)
+                              (cons seen-entry extra-entry-bridges)
+                              extra-entry-bridges)
                           extra-entry-bridges)])
            (set! seen-entry lbl)
            (set! seen-token #f)
