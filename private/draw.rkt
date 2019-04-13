@@ -258,7 +258,7 @@
                                   ([p (in-list params)])
                           (define-values (w h d a) (send dc get-text-extent p))
                           (values
-                           (cons (cons current-x (+ current-x w)) hoverable-positions)
+                           (cons (vector p current-x (+ current-x w)) hoverable-positions)
                            (hash-set all-positions p (display-bound current-x y w h))
                            (hash-set hilitable-param-positions p (display-bound current-x y w h))
                            (if (< p-count number-of-params) (+ current-x w comma-ws) (+ current-x w paren-gap)) ; the next x is (current-x + param-width + ", ")
@@ -274,7 +274,7 @@
   ;; hoverable-positions : will be used to detect what the mouse is hovering over
   ;; hilite-rectangle-positions : will be used to draw the hilite rectangles for hilited name
   ;; tline-positions : will be used to draw the tlines
-  (for/fold ([hoverable-positions (hash)] ;; -> (hash tline (listof (cons number number)))
+  (for/fold ([hoverable-positions (hash)] ;; -> (hash tline (listof (vector string number number)))
              [hilite-rectangle-positions (hash)] ;; -> (hash "str" (listof display-bounds))
              [tline-positions (hash)] ;; -> (hash tline <everything needed to draw the tline>)
              [max-w 0]
@@ -401,7 +401,7 @@
          (define lhs-display-bound (display-bound INDENT current-h lhs-w lhs-h))
 
          (define hoverables-with-lhs
-           (list (cons INDENT (+ INDENT lhs-w))))
+           (list (vector lhs INDENT (+ INDENT lhs-w))))
          (define rectangles-with-lhs
            (cons-hash-table lhs lhs-display-bound hilite-rectangle-positions))
 
@@ -414,7 +414,7 @@
            (display-bound current-x-after-= current-h op-w op_))
 
          (define hoverables-with-op
-           (cons (cons current-x-after-= current-x-after-op) hoverables-with-lhs))
+           (cons (vector op current-x-after-= current-x-after-op) hoverables-with-lhs))
          (define rectangles-with-op ;; let's make the ops highligted too
            (cons-hash-table op op-display-bound rectangles-with-lhs))
 
@@ -441,7 +441,7 @@
            (display-bound INDENT current-h op-w op-h))
 
          (define hoverables-with-op
-           (list (cons INDENT current-x-after-op)))
+           (list (vector op INDENT current-x-after-op)))
          (define rectangles-with-op ;; let's make the ops highligted too
            (cons-hash-table op op-display-bound hilite-rectangle-positions))
 
