@@ -278,7 +278,7 @@
          (define-values (w h d a) (send dc get-text-extent s))
          (values hoverable-positions
                  hilite-rectangle-positions
-                 (hash-set tline-positions tline (display-bound 0 current-h w h))
+                 (hash-set tline-positions tline (cons s (display-bound 0 current-h w h)))
                  (max max-w w)
                  (+ current-h h LINE-GAP)))]
       [(param-tline? tline)
@@ -317,7 +317,7 @@
                      hilite-rectangle-positions
                      (hash-set tline-positions
                                tline
-                               (display-bound 0 current-h w h))
+                               (cons s (display-bound 0 current-h w h)))
                      (max max-w w)
                      (+ current-h h LINE-GAP))))]
       [(guard? tline)
@@ -450,6 +450,29 @@
       [else
        (error 'compute-tline-positions-and-dimensions (format "this is not a tline : ~a\n" tline))])))
 
+(define (render-tlines dc tlines tline-positions no-debug-tlines?)
+  (send dc set-font t-font)
+  (send dc set-text-foreground tline-color)
+  (for ([tline (in-list tlines)])
+    (let ([line-info (hash-ref tline-positions tline #f)])
+      (when (and (not (debug-merge-point? tline)) (not line-info))
+        (error 'render-tlines "no pre-computed information for : ~a" tline))
+      (cond
+        [(info-tline? tline)
+         (let ([str (car line-info)]
+               [db (cdr line-info)])
+           (send dc draw-text str (display-bound-x db) (display-bound-y db) #t))]
+        [(param-tline? tline) ...]
+        [(debug-merge-point? tline)
+         (unless no-debug-tlines?
+           (let ([str (car line-info)]
+                 [db (cdr line-info)])
+             (send dc draw-text str (display-bound-x db) (display-bound-y db) #t)))]
+        [(guard? tline) ...]
+        [(assignment-tline? tline) ...]
+        [(operation-tline? tline) ...]
+        [else
+         (error 'render-tlines (format "this is not a tline : ~a\n" tline))]))))
 
 (define (render-tline dc tline tline-# hover-tline hilite-param pinned-param lbl->counts)
   (send dc set-font t-font)
