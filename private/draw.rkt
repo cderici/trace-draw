@@ -9,7 +9,8 @@
          "util.rkt")
 
 (provide draw-all render-tline
-         compute-tline-positions-and-dimensions)
+         compute-tline-positions-and-dimensions
+         render-tlines)
 
 (define (connect dc source-bounds self? is-target-inner? target-bounds
                  [right-to-left? #f][hilite? #f])
@@ -419,8 +420,8 @@
                  (hash-set tline-positions tline
                            (hash-set
                             (hash-set param-positions
-                                      "lhs" (cons lhs lhs-display-bound))
-                            "op" (cons op op-display-bound)))
+                                      "lhs" lhs-display-bound)
+                            "op" op-display-bound))
                  (max max-w current-x-after-params)
                  (+ current-h lhs-h LINE-GAP)))]
       [(operation-tline? tline)
@@ -452,8 +453,8 @@
 
 (define (render-tlines dc tlines tline-positions no-debug-tlines?)
   (send dc set-font t-font)
-  (send dc set-text-foreground tline-color)
   (for ([tline (in-list tlines)])
+    (send dc set-text-foreground tline-color)
     (let ([line-info (hash-ref tline-positions tline #f)])
       (when (and (not (debug-merge-point? tline)) (not line-info))
         (error 'render-tlines "no pre-computed information for : ~a" tline))
@@ -463,7 +464,7 @@
                [db (cdr line-info)])
            (send dc draw-text str (display-bound-x db) (display-bound-y db) #t))]
         [(param-tline? tline)
-         (compute/render-params dc (param-tline-params tline) 'dummy 'dummy "[" "]" tline-positions)]
+         (compute/render-params dc (param-tline-params tline) 'dummy 'dummy "[" "]" line-info)]
         [(debug-merge-point? tline)
          (unless no-debug-tlines?
            (let ([str (car line-info)]
@@ -476,7 +477,7 @@
                [guard-name-db (hash-ref line-info "guard-name")])
            (send dc set-text-foreground "red")
            (send dc draw-text name (display-bound-x guard-name-db) (display-bound-y guard-name-db) #t)
-           (compute/render-params dc args 'dummy 'dummy "(" ")" tline-positions "red")
+           (compute/render-params dc args 'dummy 'dummy "(" ")" line-info "red")
            (when bridge?
              (let ([sb-db (hash-ref line-info "show-bridge")])
                (send dc set-text-foreground "blue")
@@ -484,9 +485,22 @@
              (let ([run-text (hash-ref line-info "run-text")]
                    [run-text-db (hash-ref line-info "run-text-position")])
                (send dc set-text-foreground tline-color)
-               (send dc draw-text run-text (display-bound-x run-text-dp) (display-bound-y run-text-db) #t))))]
-        [(assignment-tline? tline) ...]
-        [(operation-tline? tline) ...]
+               (send dc draw-text run-text (display-bound-x run-text-db) (display-bound-y run-text-db) #t))))]
+        [(assignment-tline? tline)
+         (let ([lhs (assignment-tline-lhs tline)]
+               [op (assignment-tline-op tline)]
+               [args (assignment-tline-args tline)])
+           (let ([lhs-db (hash-ref line-info "lhs")]
+                 [op-db (hash-ref line-info "op")])
+             (send dc draw-text (string-append lhs " = ") (display-bound-x lhs-db) (display-bound-y lhs-db) #t)
+             (send dc draw-text op (display-bound-x op-db) (display-bound-y op-db) #t)
+             (compute/render-params dc args 'dummy 'dummy "(" ")" line-info)))]
+        [(operation-tline? tline)
+         (let ([op (operation-tline-op tline)]
+               [args (operation-tline-args tline)])
+           (let ([op-db (hash-ref line-info "op")])
+             (send dc draw-text op (display-bound-x op-db) (display-bound-y op-db) #t)
+             (compute/render-params dc args 'dummy 'dummy "(" ")" line-info)))]
         [else
          (error 'render-tlines (format "this is not a tline : ~a\n" tline))]))))
 
