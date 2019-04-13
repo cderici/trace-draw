@@ -564,13 +564,16 @@
          [style '(hscroll vscroll deleted)]
          [paint-callback
           (lambda (c t-dc)
+
             (when refresh-tline-canvas?
+
               (unless tline-offscreen
 
                 (let ([codes (if (trace? pinned-trace)
                                  (trace-code pinned-trace)
                                  (bridge-code pinned-trace))])
                   (when pinned-trace
+                    (send t-dc set-font t-font) ; to match the rendering font
                     (define-values (hoverable-positions
                                     hilite-rectangle-positions
                                     tline-positions
@@ -579,12 +582,29 @@
                       (compute-tline-positions-and-dimensions t-dc codes no-debug-tlines? labeled-counts))
                     (set! current-hoverable-positions hoverable-positions)
                     (set! current-hilite-rectangle-positions hilite-rectangle-positions)
-                    (set! current-tline-positions tline-positions)))
+                    (set! current-tline-positions tline-positions)
+
+                    (set! trace-w max-w)
+                    (set! trace-h current-h)
+                    #;(printf "computed -- max-w : ~a -- current-h : ~a\n" max-w current-h)
+                    (set! tline-offscreen (send trace-info-canvas make-bitmap
+                                                (->int (* view-scale max-w))
+                                                (->int (* view-scale current-h))))
+                    (set! tline-offscreen-dc (send tline-offscreen make-dc)))))
+
+              (set! refresh-tline-canvas? #f)
+
+              (define dc tline-offscreen-dc)
+              (send dc clear)
+              (send dc set-smoothing 'smoothed)
+              (draw-tlines2 dc))
 
 
-
+            #;(when refresh-tline-canvas?
+              (unless tline-offscreen
                 (draw-tlines t-dc)
                 (define-values (w h) (send t-dc get-size))
+                #;(printf "drawn -- w : ~a -- h : ~a\n" w h)
                 (set! tline-offscreen (send trace-info-canvas make-bitmap
                                             (->int (* view-scale w))
                                             (->int (* view-scale (+ h (* 3 TLINE-H))))))
@@ -597,33 +617,47 @@
               (draw-tlines dc))
             (send t-dc draw-bitmap tline-offscreen 0 0))]))
 
-    (define (draw-tlines dc)
-      (when pinned-trace
-        (let ([codes (if (trace? pinned-trace)
-                         (trace-code pinned-trace)
-                         (bridge-code pinned-trace))]
-              [jump-target (if (trace? pinned-trace)
-                               (trace-jump-target pinned-trace)
-                               (bridge-jump-target pinned-trace))])
-
-          (define filtered-codes (if no-debug-tlines? (filter (lambda (c) (not (debug-merge-point? c))) codes) codes))
-          (define-values (final-tline-# max-width)
-            (for/fold ([tline-# 0][max-w 0])
-                      ([tline (in-list filtered-codes)])
-              (define new-w
-                (render-tline dc tline tline-#
-                              hover-tline hilite-param pinned-param labeled-counts))
-              (values (add1 tline-#) (max max-w new-w))))
+  (define (draw-tlines2 dc)
+    (when pinned-trace
+      (let ([codes (if (trace? pinned-trace)
+                       (trace-code pinned-trace)
+                       (bridge-code pinned-trace))])
+        (render-tlines dc codes current-tline-positions no-debug-tlines?)
+        (unless (eq? pinned-trace prev-pinned-trace)
+          (send trace-info-canvas init-auto-scrollbars
+                (->int trace-w)
+                (->int trace-h)
+                0 0)
+          (set! prev-pinned-trace pinned-trace)))))
 
 
-          (unless (eq? pinned-trace prev-pinned-trace)
-            (set! trace-w max-width)
-            (set! trace-h (* (+ final-tline-# GAP) TLINE-H))
-            (send trace-info-canvas init-auto-scrollbars
-                  (->int trace-w)
-                  (->int trace-h)
-                  0 0)
-            (set! prev-pinned-trace pinned-trace)))))
+  (define (draw-tlines dc)
+    (when pinned-trace
+      (let ([codes (if (trace? pinned-trace)
+                       (trace-code pinned-trace)
+                       (bridge-code pinned-trace))]
+            [jump-target (if (trace? pinned-trace)
+                             (trace-jump-target pinned-trace)
+                             (bridge-jump-target pinned-trace))])
+
+        (define filtered-codes (if no-debug-tlines? (filter (lambda (c) (not (debug-merge-point? c))) codes) codes))
+        (define-values (final-tline-# max-width)
+          (for/fold ([tline-# 0][max-w 0])
+                    ([tline (in-list filtered-codes)])
+            (define new-w
+              (render-tline dc tline tline-#
+                            hover-tline hilite-param pinned-param labeled-counts))
+            (values (add1 tline-#) (max max-w new-w))))
+
+
+        (unless (eq? pinned-trace prev-pinned-trace)
+          (set! trace-w max-width)
+          (set! trace-h (* (+ final-tline-# GAP) TLINE-H))
+          (send trace-info-canvas init-auto-scrollbars
+                (->int trace-w)
+                (->int trace-h)
+                0 0)
+          (set! prev-pinned-trace pinned-trace)))))
 
   (define infobox-content
     (format "
