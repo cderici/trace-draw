@@ -8,7 +8,8 @@
          "struct.rkt"
          "util.rkt")
 
-(provide draw-all render-tline)
+(provide draw-all render-tline
+         compute-tline-positions-and-dimensions)
 
 (define (connect dc source-bounds self? is-target-inner? target-bounds
                  [right-to-left? #f][hilite? #f])
@@ -244,7 +245,7 @@
                                  [all-positions (hash "y" y l-paren x)]
                                  [hilitable-param-positions (hash)]
                                  [current-x (+ x l-paren-w)]
-                                 [param-h #f])
+                                 [param-h 0])
                                 ([p (in-list params)])
                         (define-values (w h d a) (send dc get-text-extent p))
                         (values
@@ -290,7 +291,7 @@
                (append-hash-table param-rectangle-positions hilite-rectangle-positions)
                (hash-set tline-positions tline all-positions)
                current-x
-               (+ (hash-ref param-rectangle-positions "current-y") LINE-GAP))]
+               (+ (hash-ref all-positions "current-y") LINE-GAP))]
       [(debug-merge-point? tline)
        (if hide-debug-merge-points?
            ;; we're just ignoring debug-merge-points if we're hiding
@@ -326,7 +327,7 @@
        ; note that start-x is (INDENT + guard-name-width)
        (define-values (gp-hoverable-positions all-positions hilite-rectangle-positions current-x-after-param)
          (compute/render-params dc
-                                (param-tline-params tline)
+                                (guard-args tline)
                                 (+ INDENT guard-name-w)
                                 current-h "(" ")"))
        (define positions-with-guard-name
@@ -410,7 +411,7 @@
            (cons-hash-table op op-display-bound rectangles-with-lhs))
 
          (define-values (ass-hoverable-params param-positions param-rectangles current-x-after-params)
-           (compute/render-params dc args current-h "(" ")"))
+           (compute/render-params dc args current-x-after-op current-h "(" ")"))
 
          (values (hash-set hoverable-positions tline
                            (append hoverables-with-op ass-hoverable-params))
@@ -437,13 +438,13 @@
            (cons-hash-table op op-display-bound hilite-rectangle-positions))
 
          (define-values (op-hoverable-params param-positions param-rectangles current-x-after-params)
-           (compute/render-params dc args current-h "(" ")"))
+           (compute/render-params dc args current-x-after-op current-h "(" ")"))
 
          (values (hash-set hoverable-positions tline
                            (append hoverables-with-op op-hoverable-params))
                  (append-hash-table param-rectangles rectangles-with-op)
                  (hash-set tline-positions tline
-                           (hash-set "op" (cons op op-display-bound)))
+                           (hash-set param-positions "op" (cons op op-display-bound)))
                  (max max-w current-x-after-params)
                  (+ current-h op-h LINE-GAP)))]
       [else
