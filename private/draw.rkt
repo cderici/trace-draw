@@ -224,7 +224,7 @@
 ;; returns (or void (hilitable-param-positions-hash current-x))
 ;; if positions not #f, then it renders, otherwise just computes the
 ;; positions
-(define (compute/render-params dc params x y l-paren r-paren [positions #f])
+(define (compute/render-params dc params x y l-paren r-paren [positions #f] [text-color tline-color])
   (let-values ([(l-paren-w lp_ lp__ lp___) (send dc get-text-extent l-paren)]
                [(r-paren-w rp_ rp__ rp___) (send dc get-text-extent r-paren)]
                [(comma-ws cw_ cw__ cw___) (send dc get-text-extent ", ")])
@@ -239,22 +239,24 @@
                     [h (display-bound-h param-display-bounds)])
                 (send dc draw-text p x y #t))))
           (render-regular dc r-paren (hash-ref positions r-paren) (hash-ref positions "y") text-color))
-        (let-values ([(hoverable-positions all-positions hilite-rectangle-positions final-x)
+        (let-values ([(hoverable-positions all-positions hilite-rectangle-positions final-x param-h)
                       (for/fold ([hoverable-positions null]
                                  [all-positions (hash "y" y l-paren x)]
                                  [hilitable-param-positions (hash)]
-                                 [current-x (+ x l-paren-w)])
+                                 [current-x (+ x l-paren-w)]
+                                 [param-h #f])
                                 ([p (in-list params)])
                         (define-values (w h d a) (send dc get-text-extent p))
                         (values
                          (cons (cons current-x (+ current-x w)) hoverable-positions)
                          (hash-set all-positions p (display-bound current-x y w h))
                          (hash-set hilitable-param-positions p (display-bound current-x y w h))
-                         (+ current-x w comma-ws)) ; the next x is (current-x + param-width + ", ")
+                         (+ current-x w comma-ws) ; the next x is (current-x + param-width + ", ")
+                         h)
                         )])
           (values hoverable-positions
                   (hash-set
-                   (hash-set all-positions r-paren final-x) "current-y" (+ y h))
+                   (hash-set all-positions r-paren final-x) "current-y" (+ y param-h))
                   hilite-rectangle-positions
                   (+ final-x r-paren-w))))))
 
@@ -314,7 +316,7 @@
                      hilite-rectangle-positions
                      (hash-set tline-positions
                                tline
-                               (display-bound 0 curren-y w h))
+                               (display-bound 0 current-h w h))
                      (max max-w w)
                      (+ current-h h LINE-GAP))))]
       [(guard? tline)
@@ -333,8 +335,8 @@
        (define has-a-bridge? (guard-bridge? tline))
        (define-values (show-bridge-position rectangles-with-show-bridge current-x-after-show-bridge)
          (if has-a-bridge?
-             (let-values ([(sb-w sb_ sb__ sb___)]
-                          (send dc get-text-extent "show bridge"))
+             (let-values ([(sb-w sb_ sb__ sb___)
+                           (send dc get-text-extent "show bridge")])
                (let ([sb-position
                       (display-bound (+ current-x-after-param TGAP)
                                      current-h sb-w sb_)])
@@ -353,7 +355,7 @@
 
        (define positions-with-show-bridge
          (if has-a-bridge?
-             (hash-set positions-with-guard-name "show bridge" sb-position)
+             (hash-set positions-with-guard-name "show bridge" show-bridge-position)
              positions-with-guard-name))
 
        (define-values (positions-with-run-text current-x-after-run-times)
@@ -425,7 +427,7 @@
               [args (operation-tline-args tline)])
 
          (define-values (op-w op-h op__ op___) (send dc get-text-extent op))
-         (define current-x-after-op (+ IDNENT op-w))
+         (define current-x-after-op (+ INDENT op-w))
          (define op-display-bound
            (display-bound INDENT current-h op-w op-h))
 
@@ -442,10 +444,10 @@
                  (append-hash-table param-rectangles rectangles-with-op)
                  (hash-set tline-positions tline
                            (hash-set "op" (cons op op-display-bound)))
-                 (max max-h current-x-after-params)
+                 (max max-w current-x-after-params)
                  (+ current-h op-h LINE-GAP)))]
       [else
-       (error 'render-tline (format "this is not a tline : ~a\n" tline))])))
+       (error 'compute-tline-positions-and-dimensions (format "this is not a tline : ~a\n" tline))])))
 
 
 (define (render-tline dc tline tline-# hover-tline hilite-param pinned-param lbl->counts)
