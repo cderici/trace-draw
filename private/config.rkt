@@ -17,6 +17,7 @@
 (define b-width t-width)
 (define b-height (/ t-height 2))
 
+(define LINE-GAP 5)
 (define SPLINE-SHIFT 100)
 (define GAP 4)
 (define TGAP (* 2 GAP))
