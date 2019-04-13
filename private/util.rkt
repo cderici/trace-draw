@@ -1,5 +1,8 @@
 #lang racket/base
 
+(provide append-hash-table
+         cons-hash-table)
+
 ;; h1 -> (hash "string" display-bound)
 ;; h2 -> (hash "string" (listof display-bound))
 (define (append-hash-table h1 h2)
