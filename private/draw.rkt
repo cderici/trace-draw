@@ -226,9 +226,6 @@
 ;; if positions not #f, then it renders, otherwise just computes the
 ;; positions
 (define (compute/render-params dc params x y l-paren r-paren [positions #f] [text-color tline-color])
-  (let-values ([(l-paren-w lp_ lp__ lp___) (send dc get-text-extent l-paren)]
-               [(r-paren-w rp_ rp__ rp___) (send dc get-text-extent r-paren)]
-               [(comma-ws cw_ cw__ cw___) (send dc get-text-extent ", ")])
     (if positions
         (begin
           (render-regular dc l-paren (hash-ref positions l-paren) (hash-ref positions "y") text-color)
@@ -240,26 +237,29 @@
                     [h (display-bound-h param-display-bounds)])
                 (send dc draw-text p x y #t))))
           (render-regular dc r-paren (hash-ref positions r-paren) (hash-ref positions "y") text-color))
-        (let-values ([(hoverable-positions all-positions hilite-rectangle-positions final-x param-h)
-                      (for/fold ([hoverable-positions null]
-                                 [all-positions (hash "y" y l-paren x)]
-                                 [hilitable-param-positions (hash)]
-                                 [current-x (+ x l-paren-w)]
-                                 [param-h 0])
-                                ([p (in-list params)])
-                        (define-values (w h d a) (send dc get-text-extent p))
-                        (values
-                         (cons (cons current-x (+ current-x w)) hoverable-positions)
-                         (hash-set all-positions p (display-bound current-x y w h))
-                         (hash-set hilitable-param-positions p (display-bound current-x y w h))
-                         (+ current-x w comma-ws) ; the next x is (current-x + param-width + ", ")
-                         h)
-                        )])
-          (values hoverable-positions
-                  (hash-set
-                   (hash-set all-positions r-paren final-x) "current-y" (+ y param-h))
-                  hilite-rectangle-positions
-                  (+ final-x r-paren-w))))))
+        (let-values ([(l-paren-w lp_ lp__ lp___) (send dc get-text-extent l-paren)]
+                     [(r-paren-w rp_ rp__ rp___) (send dc get-text-extent r-paren)]
+                     [(comma-ws cw_ cw__ cw___) (send dc get-text-extent ", ")])
+          (let-values ([(hoverable-positions all-positions hilite-rectangle-positions final-x param-h)
+                        (for/fold ([hoverable-positions null]
+                                   [all-positions (hash "y" y l-paren x)]
+                                   [hilitable-param-positions (hash)]
+                                   [current-x (+ x l-paren-w)]
+                                   [param-h 0])
+                                  ([p (in-list params)])
+                          (define-values (w h d a) (send dc get-text-extent p))
+                          (values
+                           (cons (cons current-x (+ current-x w)) hoverable-positions)
+                           (hash-set all-positions p (display-bound current-x y w h))
+                           (hash-set hilitable-param-positions p (display-bound current-x y w h))
+                           (+ current-x w comma-ws) ; the next x is (current-x + param-width + ", ")
+                           h)
+                          )])
+            (values hoverable-positions
+                    (hash-set
+                     (hash-set all-positions r-paren final-x) "current-y" (+ y param-h))
+                    hilite-rectangle-positions
+                    (+ final-x r-paren-w))))))
 
 (define (compute-tline-positions-and-dimensions dc tlines hide-debug-merge-points? lbl->counts)
   ;; hoverable-positions : will be used to detect what the mouse is hovering over
