@@ -255,45 +255,6 @@
                   hilitable-positions
                   (+ final-x r-paren-w))))))
 
-(define (compute-param-bounds dc x l-paren r-paren y params pinned-param hilite-param hbounds
-                              [text-color tline-color])
-  (define param-bounds hbounds)
-  (define-values (paren-w _ __ ___) (send dc get-text-extent l-paren))
-  (define-values (comma-ws _2 __2 ___2) (send dc get-text-extent ", "))
-  (unless param-bounds
-    ;; FIXME : merge this with drawing below
-    (define-values (bounds last-x)
-      (for/fold ([hbounds (hash)]
-                 [current-x (+ paren-w x)])
-                ([p (in-list params)])
-        (define-values (w h d a) (send dc get-text-extent p))
-        (let ([p-end-x (+ current-x w)])
-          (values (hash-set hbounds p (cons current-x p-end-x))
-                  (+ p-end-x comma-ws)))))
-    (set! param-bounds bounds))
-  #;(send dc set-text-foreground text-color)
-  (define first? #t)
-  (define start-x x)
-  (render-regular dc l-paren start-x y text-color)
-  (set! start-x (+ start-x paren-w))
-  (for ([p-str (in-list params)])
-    (define-values (p-w p-h __3 ___3) (send dc get-text-extent p-str))
-    (when first?
-      (set! first? #f))
-    (unless first?
-      (set! start-x (+ start-x comma-ws)))
-    #;(when (or (equal? pinned-param p-str)
-              (equal? hilite-param p-str))
-      (define-values (x-l x-r)
-        (let ([b (hash-ref param-bounds p-str)]) (values (car b) (cdr b))))
-      #;(send dc set-brush tline-highlight-brush)
-      #;(send dc draw-rounded-rectangle
-            (- start-x GAP) y (+ p-w TGAP) (- TLINE-H GAP)))
-    #;(send dc draw-text p-str start-x y #t)
-    (set! start-x (+ start-x p-w)))
-  #;(render-regular dc r-paren start-x y text-color)
-  (values (+ start-x paren-w) param-bounds))
-
 (define (compute-tline-positions-and-dimensions dc tlines hide-debug-merge-points? lbl->counts)
   (for/fold ([hilitable-positions (hash)]
              [tline-positions (hash)]
