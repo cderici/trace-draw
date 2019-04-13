@@ -385,9 +385,7 @@
       [(assignment-tline? tline)
        (let ([lhs (assignment-tline-lhs tline)]
              [op (assignment-tline-op tline)]
-             [args (assignment-tline-args tline)]
-             [hbounds (assignment-tline-hbounds tline)]
-             [start-x INDENT])
+             [args (assignment-tline-args tline)])
          (define-values (lhs-w lhs-h __2 ___2) (send dc get-text-extent lhs))
          (define lhs-display-bound (display-bound INDENT current-h lhs-w lhs-h))
 
@@ -422,27 +420,30 @@
                             "op" (cons op op-display-bound)))
                  (max max-w current-x-after-params)
                  (+ current-h lhs-h LINE-GAP)))]
-
       [(operation-tline? tline)
        (let* ([op (operation-tline-op tline)]
-              [args (operation-tline-args tline)]
-              [label? (equal? op "label")]
-              [jump? (equal? op "jump")]
-              [hbounds (operation-tline-hbounds tline)]
-              [start-x INDENT])
-         (define color tline-color)
-         (when (or label? jump?)
-           (set! color "blue"))
-         (send dc set-text-foreground color)
-         (define-values (op-w op-h op-d op-a) (send dc get-text-extent op))
-         (send dc draw-text op start-x y #t)
-         (set! start-x (+ start-x op-w))
-         (define-values (next-x param-bounds)
-           (render-params dc start-x "(" ")" y
-                          args pinned-param hilite-param hbounds color))
-         (unless hbounds
-           (set-operation-tline-hbounds! tline param-bounds))
-         next-x)]
+              [args (operation-tline-args tline)])
+
+         (define-values (op-w op-h op__ op___) (send dc get-text-extent op))
+         (define current-x-after-op (+ IDNENT op-w))
+         (define op-display-bound
+           (display-bound INDENT current-h op-w op-h))
+
+         (define hoverables-with-op
+           (list (cons INDENT current-x-after-op)))
+         (define rectangles-with-op ;; let's make the ops highligted too
+           (cons-hash-table op op-display-bound hilite-rectangle-positions))
+
+         (define-values (op-hoverable-params param-positions param-rectangles current-x-after-params)
+           (compute/render-params dc args current-h "(" ")"))
+
+         (values (hash-set hoverable-positions tline
+                           (append hoverables-with-op op-hoverable-params))
+                 (append-hash-table param-rectangles rectangles-with-op)
+                 (hash-set tline-positions tline
+                           (hash-set "op" (cons op op-display-bound)))
+                 (max max-h current-x-after-params)
+                 (+ current-h op-h LINE-GAP)))]
       [else
        (error 'render-tline (format "this is not a tline : ~a\n" tline))])))
 
