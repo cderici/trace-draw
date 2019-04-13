@@ -505,9 +505,11 @@
         [(operation-tline? tline)
          (let ([op (operation-tline-op tline)]
                [args (operation-tline-args tline)])
-           (let ([op-db (hash-ref line-info "op")])
+           (let ([op-db (hash-ref line-info "op")]
+                 [color (if (or (equal? op "jump") (equal? op "label")) "blue" tline-color)])
+             (send dc set-text-foreground color)
              (send dc draw-text op (display-bound-x op-db) (display-bound-y op-db) #t)
-             (compute/render-params dc args 'dummy 'dummy "(" ")" line-info)))]
+             (compute/render-params dc args 'dummy 'dummy "(" ")" line-info color)))]
         [else
          (error 'render-tlines (format "this is not a tline : ~a\n" tline))]))))
 
