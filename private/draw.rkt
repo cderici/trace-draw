@@ -228,34 +228,42 @@
 ;; positions
 (define (compute/render-params dc params x y l-paren r-paren [positions #f] [text-color tline-color])
     (if positions
-        (begin
+        (let ([number-of-params (length params)])
           (render-regular dc l-paren (hash-ref positions l-paren) (hash-ref positions "y") text-color)
-          (for ([p (in-list params)])
+
+          (for/fold ([p-count 1])
+                    ([p (in-list params)])
             (let ([param-display-bounds (hash-ref positions p)])
               (let ([x (display-bound-x param-display-bounds)]
                     [y (display-bound-y param-display-bounds)]
                     [w (display-bound-w param-display-bounds)]
                     [h (display-bound-h param-display-bounds)])
-                (send dc draw-text p x y #t))))
+                (send dc draw-text p x y #t)
+                (when (< p-count number-of-params)
+                  (send dc draw-text ", " (+ x w) y #t))
+                (add1 p-count))))
           (render-regular dc r-paren (hash-ref positions r-paren) (hash-ref positions "y") text-color))
         (let-values ([(l-paren-w lp_ lp__ lp___) (send dc get-text-extent l-paren)]
                      [(r-paren-w rp_ rp__ rp___) (send dc get-text-extent r-paren)]
-                     [(comma-ws cw_ cw__ cw___) (send dc get-text-extent ", ")])
-          (let-values ([(hoverable-positions all-positions hilite-rectangle-positions final-x param-h)
+                     [(comma-ws cw_ cw__ cw___) (send dc get-text-extent ", ")]
+                     [(number-of-params) (length params)]
+                     [(paren-gap) 2])
+          (let-values ([(hoverable-positions all-positions hilite-rectangle-positions final-x param-h _)
                         (for/fold ([hoverable-positions null]
                                    [all-positions (hash "y" y l-paren x)]
                                    [hilitable-param-positions (hash)]
-                                   [current-x (+ x l-paren-w)]
-                                   [param-h 0])
+                                   [current-x (+ x (+ l-paren-w paren-gap))]
+                                   [param-h 0]
+                                   [p-count 1])
                                   ([p (in-list params)])
                           (define-values (w h d a) (send dc get-text-extent p))
                           (values
                            (cons (cons current-x (+ current-x w)) hoverable-positions)
                            (hash-set all-positions p (display-bound current-x y w h))
                            (hash-set hilitable-param-positions p (display-bound current-x y w h))
-                           (+ current-x w comma-ws) ; the next x is (current-x + param-width + ", ")
-                           h)
-                          )])
+                           (if (< p-count number-of-params) (+ current-x w comma-ws) (+ current-x w paren-gap)) ; the next x is (current-x + param-width + ", ")
+                           h
+                           (add1 p-count)))])
             (values hoverable-positions
                     (hash-set
                      (hash-set all-positions r-paren final-x) "current-y" (+ y param-h))
