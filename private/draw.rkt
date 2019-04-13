@@ -343,13 +343,12 @@
                       (display-bound (+ current-x-after-param TGAP)
                                      current-h sb-w sb_)])
                  (values sb-position
-                         (append-hash-table hilite-rectangle-positions
-                                            (hash-set hilite-rectangle-positions
-                                                      ;; there's always only one
-                                                      ;; show-bridge highlighted
-                                                      ;; (underlined) at any moment
-                                                      "show bridge"
-                                                      sb-position))
+                         (hash-set hilite-rectangle-positions
+                                   ;; there's always only one
+                                   ;; show-bridge highlighted
+                                   ;; (underlined) at any moment
+                                   "show-bridge"
+                                   sb-position)
                          (+ current-x-after-param TGAP sb-w))))
              (values #f
                      (append-hash-table hilite-rectangle-positions hilite-rectangle-positions)
@@ -357,7 +356,7 @@
 
        (define positions-with-show-bridge
          (if has-a-bridge?
-             (hash-set positions-with-guard-name "show bridge" show-bridge-position)
+             (hash-set positions-with-guard-name "show-bridge" show-bridge-position)
              positions-with-guard-name))
 
        (define-values (positions-with-run-text current-x-after-run-times)
@@ -445,7 +444,7 @@
                            (append hoverables-with-op op-hoverable-params))
                  (append-hash-table param-rectangles rectangles-with-op)
                  (hash-set tline-positions tline
-                           (hash-set param-positions "op" (cons op op-display-bound)))
+                           (hash-set param-positions "op" op-display-bound))
                  (max max-w current-x-after-params)
                  (+ current-h op-h LINE-GAP)))]
       [else
@@ -461,7 +460,7 @@
       (cond
         [(info-tline? tline)
          (let ([str (info-tline-line-str tline)]
-               [db (cdr line-info)])
+               [db line-info])
            (send dc draw-text str (display-bound-x db) (display-bound-y db) #t))]
         [(param-tline? tline)
          (compute/render-params dc (param-tline-params tline) 'dummy 'dummy "[" "]" line-info)]
