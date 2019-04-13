@@ -239,47 +239,56 @@
                     [h (display-bound-h param-display-bounds)])
                 (send dc draw-text p x y #t))))
           (render-regular dc r-paren (hash-ref positions r-paren) (hash-ref positions "y") text-color))
-        (let-values ([(all-positions hilitable-positions final-x)
-                      (for/fold ([all-positions (hash "y" y l-paren x)]
+        (let-values ([(hoverable-positions all-positions hilite-rectangle-positions final-x)
+                      (for/fold ([hoverable-positions null]
+                                 [all-positions (hash "y" y l-paren x)]
                                  [hilitable-param-positions (hash)]
                                  [current-x (+ x l-paren-w)])
                                 ([p (in-list params)])
                         (define-values (w h d a) (send dc get-text-extent p))
                         (values
+                         (cons (cons current-x (+ current-x w)) hoverable-positions)
                          (hash-set all-positions p (display-bound current-x y w h))
                          (hash-set hilitable-param-positions p (display-bound current-x y w h))
                          (+ current-x w comma-ws)) ; the next x is (current-x + param-width + ", ")
                         )])
-          (values (hash-set
+          (values hoverable-positions
+                  (hash-set
                    (hash-set all-positions r-paren final-x) "current-y" (+ y h))
-                  hilitable-positions
+                  hilite-rectangle-positions
                   (+ final-x r-paren-w))))))
 
 (define (compute-tline-positions-and-dimensions dc tlines hide-debug-merge-points? lbl->counts)
-  (for/fold ([hilitable-positions (hash)]
-             [tline-positions (hash)]
+  ;; hoverable-positions : will be used to detect what the mouse is hovering over
+  ;; hilite-rectangle-positions : will be used to draw the hilite rectangles for hilited name
+  ;; tline-positions : will be used to draw the tlines
+  (for/fold ([hoverable-positions (hash)] ;; -> (hash tline (listof (cons number number)))
+             [hilite-rectangle-positions (hash)] ;; -> (hash "str" (listof display-bounds))
+             [tline-positions (hash)] ;; -> (hash tline <everything needed to draw the tline>)
              [max-w 0]
              [current-h 0])
             ([tline (in-list tlines)])
     (cond
       [(info-tline? tline)
        (let ([s (info-tline-line-str tline)])
-         (send dc set-font secondary-t-font)
+         #;(send dc set-font secondary-t-font)
          (define-values (w h d a) (send dc get-text-extent s))
-         (values hilitable-positions
+         (values hoverable-positions
+                 hilite-rectangle-positions
                  (hash-set tline-positions tline (display-bound 0 current-h w h))
                  (max max-w w)
                  (+ current-h h LINE-GAP)))]
       [(param-tline? tline)
-       (define-values (all-positions param-positions current-x)
-         (compute/render-params dc 
+       (define-values (param-hilitable-xs all-positions param-rectangle-positions current-x)
+         (compute/render-params dc
                                 (param-tline-params tline)
                                 INDENT
                                 current-h "[" "]"))
-       (values (append-hash-table param-positions hilitable-positions)
+       (values (hash-set hoverable-positions tline param-hilitable-xs)
+               (append-hash-table param-rectangle-positions hilite-rectangle-positions)
                (hash-set tline-positions tline all-positions)
                current-x
-               (+ (hash-ref param-positions "current-y") LINE-GAP))]
+               (+ (hash-ref param-rectangle-positions "current-y") LINE-GAP))]
       [(debug-merge-point? tline)
        (if hide-debug-merge-points?
            ;; we're just ignoring debug-merge-points if we're hiding
@@ -293,13 +302,16 @@
            ;; so to hide them we only need to subtract from each tline
            ;; -> (* line-height #-of-debug-points-above) ... note that
            ;; we also need to shift the hilites
-           (values hilitable-positions
+           ;; note that this might also confuse the mouse hover computation
+           (values hoverable-positions
+                   hilite-rectangle-positions
                    tline-positions
                    max-w current-h)
            (let ([s (string-append "> " (debug-merge-point-code tline))])
-             (send dc set-font secondary-t-font)
+             #;(send dc set-font secondary-t-font)
              (define-values (w h d a) (send dc get-text-extent s))
-             (values hilitable-positions
+             (values hoverable-positions
+                     hilite-rectangle-positions
                      (hash-set tline-positions
                                tline
                                (display-bound 0 curren-y w h))
@@ -308,18 +320,16 @@
       [(guard? tline)
        (define guard-name (guard-type tline))
        (define-values (w h d a) (send dc get-text-extent guard-name))
-       (define-values (all-positions param-positions current-x-after-param)
-         (compute-or-render-params dc 
-                                   (param-tline-params tline)
-                                   (+ INDENT w)
-                                   current-h "(" ")"))
+       (define-values (gp-hoverable-positions all-positions hilite-rectangle-positions current-x-after-param)
+         (compute/render-params dc
+                                (param-tline-params tline)
+                                (+ INDENT w)
+                                current-h "(" ")"))
        (define positions-with-guard-name
          (hash-set all-positions "guard-name" (display-bound INDENT current-h
                                                              w h)))
        (define has-a-bridge? (guard-bridge? tline))
-       (define-values (show-bridge-position
-                       hilitables-with-show-bridge
-                       current-x-after-show-bridge)
+       (define-values (show-bridge-position rectangles-with-show-bridge current-x-after-show-bridge)
          (if has-a-bridge?
              (let-values ([(sb-w sb_ sb__ sb___)]
                           (send dc get-text-extent "show bridge"))
@@ -327,16 +337,16 @@
                       (display-bound (+ current-x-after-param TGAP)
                                      current-h sb-w sb_)])
                  (values sb-position
-                         (append-hash-table param-positions
-                                            (hash-set hilitable-positions
+                         (append-hash-table hilite-rectangle-positions
+                                            (hash-set hilite-rectangle-positions
                                                       ;; there's always only one
                                                       ;; show-bridge highlighted
                                                       ;; (underlined) at any moment
-                                                      "show bridge" 
+                                                      "show bridge"
                                                       sb-position))
                          (+ current-x-after-param TGAP sb-w))))
              (values #f
-                     (append-hash-table param-positions hilitable-positions)
+                     (append-hash-table hilite-rectangle-positions hilite-rectangle-positions)
                      current-x-after-param)))
 
        (define positions-with-show-bridge
@@ -365,20 +375,32 @@
              (values positions-with-show-bridge
                      current-x-after-show-bridge)))
 
-       (values (append-hash-table hilitables-with-show-bridge hilitable-positions)
+       (values (hash-set hoverable-positions tline gp-hoverable-positions)
+               rectangles-with-show-bridge
                (hash-set tline-positions tline positions-with-run-text)
                (max max-w current-x-after-run-times TGAP)
                (+ current-h h LINE-GAP))]
-      
       [(assignment-tline? tline)
        (let ([lhs (assignment-tline-lhs tline)]
              [op (assignment-tline-op tline)]
              [args (assignment-tline-args tline)]
              [hbounds (assignment-tline-hbounds tline)]
              [start-x INDENT])
-         (define lhs-str (string-append lhs " = "))
-         (define-values (lhs-w _ __ ___) (send dc get-text-extent lhs))
-         (define-values (lhs-str-w _2 __2 ___2) (send dc get-text-extent lhs-str))
+         (define-values (lhs-w _2 __2 ___2) (send dc get-text-extent lhs))
+         (define lhs-display-bound (display-bound INDENT current-h lhs-w _2))
+
+         (define hilitables-with-lhs
+           (cons-hash-table lhs lhs-display-bound hilite-rectangle-positions))
+         (define all-tline-positions
+           (hash "lhs" (cons lhs lhs-display-bound)))
+
+         (define-values (=-w _ __ ___) (send dc get-text-extent " = "))
+         (define current-x-after-= (+ INDENT lhs-w =-w))
+
+         (define-values (op-w op_ op__ op___) (send dc get-text-extent op))
+         (define hilitables-with-op
+           (cons-hash-table op
+
          (define lhs-start-x start-x)
          (when (or (equal? pinned-param lhs)
                    (equal? hilite-param lhs))
@@ -398,6 +420,10 @@
             tline
             (hash-set param-bounds lhs (cons lhs-start-x (+ lhs-start-x lhs-w)))))
          next-x)]
+
+
+
+
       [(operation-tline? tline)
        (let* ([op (operation-tline-op tline)]
               [args (operation-tline-args tline)]
