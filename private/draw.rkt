@@ -278,7 +278,7 @@
          (define-values (w h d a) (send dc get-text-extent s))
          (values hoverable-positions
                  hilite-rectangle-positions
-                 (hash-set tline-positions tline (cons s (display-bound 0 current-h w h)))
+                 (hash-set tline-positions tline (display-bound 0 current-h w h))
                  (max max-w w)
                  (+ current-h h LINE-GAP)))]
       [(param-tline? tline)
@@ -459,16 +459,32 @@
         (error 'render-tlines "no pre-computed information for : ~a" tline))
       (cond
         [(info-tline? tline)
-         (let ([str (car line-info)]
+         (let ([str (info-tline-line-str tline)]
                [db (cdr line-info)])
            (send dc draw-text str (display-bound-x db) (display-bound-y db) #t))]
-        [(param-tline? tline) ...]
+        [(param-tline? tline)
+         (compute/render-params dc (param-tline-params tline) 'dummy 'dummy "[" "]" tline-positions)]
         [(debug-merge-point? tline)
          (unless no-debug-tlines?
            (let ([str (car line-info)]
                  [db (cdr line-info)])
              (send dc draw-text str (display-bound-x db) (display-bound-y db) #t)))]
-        [(guard? tline) ...]
+        [(guard? tline)
+         (let ([name (guard-type tline)]
+               [args (guard-args tline)]
+               [bridge? (guard-bridge? tline)]
+               [guard-name-db (hash-ref line-info "guard-name")])
+           (send dc set-text-foreground "red")
+           (send dc draw-text name (display-bound-x guard-name-db) (display-bound-y guard-name-db) #t)
+           (compute/render-params dc args 'dummy 'dummy "(" ")" tline-positions "red")
+           (when bridge?
+             (let ([sb-db (hash-ref line-info "show-bridge")])
+               (send dc set-text-foreground "blue")
+               (send dc draw-text "show bridge" (display-bound-x sb-db) (display-bound-y sb-db) #t))
+             (let ([run-text (hash-ref line-info "run-text")]
+                   [run-text-db (hash-ref line-info "run-text-position")])
+               (send dc set-text-foreground tline-color)
+               (send dc draw-text run-text (display-bound-x run-text-dp) (display-bound-y run-text-db) #t))))]
         [(assignment-tline? tline) ...]
         [(operation-tline? tline) ...]
         [else
