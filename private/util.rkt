@@ -11,3 +11,10 @@
                     s (cons d current-bounds))
           (hash-set return-hash
                     s (list d))))))
+
+;; ht -> (hash "string" (listof display-bound))
+(define (cons-hash-table key value ht)
+  (let ([ls (hash-ref ht key #f)])
+    (if ls
+        (hash-set ht key (cons value ls))
+        (hash-set ht key (list value)))))
