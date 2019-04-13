@@ -28,7 +28,7 @@
   ; and   ; trace-labels -> counts
   (define-values (trace-blocks extra-entry-bridges total-number-of-loops jit-counts labeled-counts)
     (process-jit-counts jit-count-lines trace-candidates))
-  
+
   (define no-count? (null? jit-count-lines))
 
   (define traces
@@ -416,6 +416,11 @@
                                      (send tpanel delete-child infobox)
                                      (send tpanel add-child trace-info-canvas))))]))
 
+  ;; FIXME : cache these with trace-labels
+  (define current-hoverable-positions #f) ;; (hash tline (listof (cons number number)))
+  (define current-hilite-rectangle-positions #f) ;; (hash "str" (listof display-bounds))
+  (define current-tline-positions #f) ;; (hash tline <everything needed to draw the tline>)
+
   (define refresh-tline-canvas? #t)
   (define tline-offscreen #f)
   (define tline-offscreen-dc #f)
@@ -561,6 +566,23 @@
           (lambda (c t-dc)
             (when refresh-tline-canvas?
               (unless tline-offscreen
+
+                (let ([codes (if (trace? pinned-trace)
+                                 (trace-code pinned-trace)
+                                 (bridge-code pinned-trace))])
+                  (when pinned-trace
+                    (define-values (hoverable-positions
+                                    hilite-rectangle-positions
+                                    tline-positions
+                                    max-w
+                                    current-h)
+                      (compute-tline-positions-and-dimensions t-dc codes no-debug-tlines? labeled-counts))
+                    (set! current-hoverable-positions hoverable-positions)
+                    (set! current-hilite-rectangle-positions hilite-rectangle-positions)
+                    (set! current-tline-positions tline-positions)))
+
+
+
                 (draw-tlines t-dc)
                 (define-values (w h) (send t-dc get-size))
                 (set! tline-offscreen (send trace-info-canvas make-bitmap
