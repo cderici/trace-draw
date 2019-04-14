@@ -240,7 +240,8 @@
              [hilite-rectangle-positions (hash)] ;; -> (hash "str" (listof display-bounds))
              [tline-positions (hash)] ;; -> (hash tline <everything needed to draw the tline>)
              [max-w 0]
-             [current-h 0])
+             [current-h 0]
+             [optimized-loop-h #f])
             ([tline (in-list tlines)])
     (cond
       [(info-tline? tline)
@@ -251,7 +252,8 @@
                  hilite-rectangle-positions
                  (hash-set tline-positions tline (display-bound 0 current-h w h))
                  (max max-w w)
-                 (+ current-h h LINE-GAP)))]
+                 (+ current-h h LINE-GAP)
+                 optimized-loop-h))]
       [(param-tline? tline)
        (define-values (param-hilitable-xs all-positions param-rectangle-positions current-x)
          (compute/render-params dc
@@ -262,7 +264,8 @@
                (append-hash-table param-rectangle-positions hilite-rectangle-positions)
                (hash-set tline-positions tline all-positions)
                current-x
-               (+ (hash-ref all-positions "current-y") LINE-GAP))]
+               (+ (hash-ref all-positions "current-y") LINE-GAP)
+               optimized-loop-h)]
       [(debug-merge-point? tline)
        (if hide-debug-merge-points?
            ;; we're just ignoring debug-merge-points if we're hiding
@@ -280,7 +283,7 @@
            (values hoverable-positions
                    hilite-rectangle-positions
                    tline-positions
-                   max-w current-h)
+                   max-w current-h optimized-loop-h)
            (let ([s (string-append "> " (debug-merge-point-code tline))])
              #;(send dc set-font secondary-t-font)
              (define-values (w h d a) (send dc get-text-extent s))
@@ -290,7 +293,8 @@
                                tline
                                (cons s (display-bound 0 current-h w h)))
                      (max max-w w)
-                     (+ current-h h LINE-GAP))))]
+                     (+ current-h h LINE-GAP)
+                     optimized-loop-h)))]
       [(guard? tline)
        (define guard-name (guard-type tline))
        (define hoverables null)
@@ -370,7 +374,8 @@
                rectangles-with-show-bridge
                (hash-set tline-positions tline positions-with-run-text)
                (max max-w current-x-after-run-times TGAP)
-               (+ current-h h LINE-GAP))]
+               (+ current-h h LINE-GAP)
+               optimized-loop-h)]
       [(assignment-tline? tline)
        (let ([lhs (assignment-tline-lhs tline)]
              [op (assignment-tline-op tline)]
@@ -408,7 +413,8 @@
                                       "lhs" lhs-display-bound)
                             "op" op-display-bound))
                  (max max-w current-x-after-params)
-                 (+ current-h lhs-h LINE-GAP)))]
+                 (+ current-h lhs-h LINE-GAP)
+                 optimized-loop-h))]
       [(operation-tline? tline)
        (let* ([op (operation-tline-op tline)]
               [args (operation-tline-args tline)])
@@ -432,7 +438,8 @@
                  (hash-set tline-positions tline
                            (hash-set param-positions "op" op-display-bound))
                  (max max-w current-x-after-params)
-                 (+ current-h op-h LINE-GAP)))]
+                 (+ current-h op-h LINE-GAP)
+                 (if (string=? op "label") current-h optimized-loop-h)))]
       [else
        (error 'compute-tline-positions-and-dimensions (format "this is not a tline : ~a\n" tline))])))
 

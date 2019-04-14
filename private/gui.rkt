@@ -283,6 +283,12 @@
                        (set! tline-offscreen #f)
                        (set! refresh-tline-canvas? #t)
                        (send trace-info-canvas refresh)
+                       (when (trace? pinned-trace)
+                         (unless (memv in-trace-jump-button (send right-h-panel get-children))
+                           (send right-h-panel add-child in-trace-jump-button)))
+                       (when (and (bridge? pinned-trace)
+                                  (memv in-trace-jump-button (send right-h-panel get-children)))
+                         (send right-h-panel delete-child in-trace-jump-button))
                        (reset-hilites-lhs)
                        (update-message-bar))
                      ;; unsetting a pinned-trace
@@ -292,6 +298,8 @@
                          (set! refresh-tline-canvas? #t)
                          (send trace-info-canvas refresh))
                        (set! pinned-trace #f)
+                       (when (memv in-trace-jump-button (send right-h-panel get-children))
+                                     (send right-h-panel delete-child in-trace-jump-button))
                        (set! refresh-offscreen? #t)
                        (update-message-bar)
                        (low-priority-refresh))
@@ -384,31 +392,52 @@
 
   (define history-pinned-trace '()) ; stack of visited pinned-traces
 
-  (define back-button (new button%
-                           [parent right-h-panel]
-                           [label "Back"]
-                           [style '(deleted)]
-                           [stretchable-width #t]
-                           [callback (lambda (b ce)
-                                       (set! pinned-trace (car history-pinned-trace))
-                                       (set! history-pinned-trace
-                                             (or (and (null? history-pinned-trace) null)
-                                                 (cdr history-pinned-trace)))
+  (define back-button
+    (new button%
+         [parent right-h-panel]
+         [label "Back"]
+         [style '(deleted)]
+         [stretchable-width #t]
+         [callback (lambda (b ce)
+                     (set! pinned-trace (car history-pinned-trace))
+                     (when (trace? pinned-trace)
+                       (send right-h-panel add-child in-trace-jump-button))
+                     (set! history-pinned-trace
+                           (or (and (null? history-pinned-trace) null)
+                               (cdr history-pinned-trace)))
 
-                                       (set! refresh-offscreen? #t)
-                                       (send c refresh)
-                                       (send c reset-hilites-lhs)
-                                       (update-message-bar)
-                                       (set! hilite-param #f)
-                                       (set! pinned-param #f)
-                                       (set! hover-tline #f)
-                                       (if (null? history-pinned-trace)
-                                           (send right-h-panel delete-child back-button)
-                                           (send back-button set-label
-                                                 (format "Back to : ~a" (get-label (car history-pinned-trace)))))
-                                       (set! tline-offscreen #f)
-                                       (set! refresh-tline-canvas? #t)
-                                       (send trace-info-canvas refresh))]))
+                     (set! refresh-offscreen? #t)
+                     (send c refresh)
+                     (send c reset-hilites-lhs)
+                     (update-message-bar)
+                     (set! hilite-param #f)
+                     (set! pinned-param #f)
+                     (set! hover-tline #f)
+                     (if (null? history-pinned-trace)
+                         (send right-h-panel delete-child back-button)
+                         (send back-button set-label
+                               (format "Back to : ~a" (get-label (car history-pinned-trace)))))
+                     (set! tline-offscreen #f)
+                     (set! refresh-tline-canvas? #t)
+                     (send trace-info-canvas refresh))]))
+
+  (define in-trace-jump-button
+    (new button%
+         [parent right-h-panel]
+         [label "Jump to Optimized Loop"]
+         [style '(deleted)]
+         [stretchable-width #t]
+         [callback (lambda (b ce)
+                     (if (equal? (send b get-label) "Jump to Optimized Loop")
+                         (when current-optimized-loop-y-position
+                           (send b set-label "Jump to Preamble")
+                           (send trace-info-canvas adjust-scroll 0
+                                 current-optimized-loop-y-position))
+                         (let ()
+                           (send b set-label "Jump to Optimized Loop")
+                           (send trace-info-canvas adjust-scroll 0 0))))]))
+
+
 
   (define-values (client-w client-h)
     (send f get-client-size))
@@ -437,6 +466,7 @@
   (define current-hoverable-positions #f) ;; (hash tline (listof (cons number number)))
   (define current-hilite-rectangle-positions #f) ;; (hash "str" (listof display-bounds))
   (define current-tline-positions #f) ;; (hash tline <everything needed to draw the tline>)
+  (define current-optimized-loop-y-position #f)
   (define refresh-tline-canvas-hilites? #t)
 
   (define refresh-tline-canvas? #t)
@@ -463,7 +493,7 @@
                     get-client-size
                     scroll
                     init-auto-scrollbars)
-           (define/private (adjust-scroll dx dy)
+           (define/public (adjust-scroll dx dy)
              (define-values (w h) (get-client-size))
              (define-values (x y) (get-view-start))
              (define adj-w (- (* view-scale trace-w) w))
@@ -473,6 +503,9 @@
              (define tx (and (not (= x (* sx adj-w))) sx))
              (define ty (and (not (= y (* sy adj-h))) sy))
              (when (or tx ty) (scroll tx ty)))
+           (define/public (scroll-to x y)
+             #;(define-values (w h) (get-client-size))
+             (scroll (/ x trace-w) (/ y trace-h)))
            (define/override (on-char e)
              (for/or ([key-code (list (send e get-key-code)
                                       (send e get-other-shift-key-code)
@@ -538,6 +571,8 @@
                                  (send c reset-hilites-lhs)
                                  (when (send e button-down?)
                                    (set! hover-param #f)
+                                   (when (memv in-trace-jump-button (send right-h-panel get-children))
+                                     (send right-h-panel delete-child in-trace-jump-button))
                                    (set! pinned-param #f)
                                    (context-switch-to b)))))
 
@@ -628,7 +663,8 @@
                                     hilite-rectangle-positions
                                     tline-positions
                                     max-w
-                                    current-h)
+                                    current-h
+                                    optimized-loop-h)
                         (compute-tline-positions-and-dimensions t-dc codes no-debug-tlines? labeled-counts))
                       (set! recompute-tline-positions #f)
                       (hash-set! position-cache
@@ -638,11 +674,13 @@
                                        'tline-positions tline-positions
                                        'tline-canvas-height current-h
                                        'tline-max-width max-w
-                                       'cached-no-debug-status no-debug-tlines?)))
+                                       'cached-no-debug-status no-debug-tlines?
+                                       'optimized-loop-y-position optimized-loop-h)))
                     (define cached-positions (hash-ref position-cache pinned-trace))
                     (set! current-hoverable-positions (hash-ref cached-positions 'hoverable-positions))
                     (set! current-hilite-rectangle-positions (hash-ref cached-positions 'rectangle-positions))
                     (set! current-tline-positions (hash-ref cached-positions 'tline-positions))
+                    (set! current-optimized-loop-y-position (hash-ref cached-positions 'optimized-loop-y-position))
 
                     (set! trace-w (hash-ref cached-positions 'tline-max-width))
                     (set! trace-h (hash-ref cached-positions 'tline-canvas-height))
