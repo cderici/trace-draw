@@ -92,6 +92,16 @@
          [parent below-panel]
          [alignment '(right center)]))
 
+  (define show-guards-check
+    (new check-box%
+         [label "Show Guards"]
+         [parent below-controls]
+         [callback (lambda (cb ce)
+                     (set! hilite-all-guards? (send cb get-value))
+                     (set! refresh-tline-canvas? #t)
+                     (set! refresh-tline-canvas-hilites? #t)
+                     (send trace-info-canvas refresh))]))
+
   (define no-debug-tlines-check
     (new check-box%
          [label "Hide Interpreted Codes"]
@@ -102,6 +112,8 @@
                      (set! refresh-tline-canvas? #t)
                      (set! recompute-tline-positions #t)
                      (send trace-info-canvas refresh))]))
+
+
 
   (define refresh-offscreen? #t)
   (define offscreen #f)
@@ -441,6 +453,7 @@
   (define hover-param-trace #f) ;; a tracebox to look like a hover because of a tline param
 
   (define no-debug-tlines? #f)
+  (define hilite-all-guards? #f)
 
   (define trace-info-canvas
     (new (class canvas%
@@ -650,11 +663,10 @@
               (send dc set-smoothing 'smoothed)
               (draw-tlines dc))
 
-
             (when (and refresh-tline-canvas-hilites?
                        current-hilite-rectangle-positions
-                       (or hilite-param pinned-param))
-              (render-hilites tline-offscreen-dc hilite-param pinned-param current-hilite-rectangle-positions hilite-guards?)
+                       (or hilite-all-guards? hilite-param pinned-param))
+              (render-hilites tline-offscreen-dc hilite-param pinned-param current-hilite-rectangle-positions hilite-all-guards?)
               (set! refresh-tline-canvas-hilites? #f))
 
             (send t-dc draw-bitmap tline-offscreen 0 0))]))

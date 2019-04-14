@@ -293,6 +293,7 @@
                      (+ current-h h LINE-GAP))))]
       [(guard? tline)
        (define guard-name (guard-type tline))
+       (define hoverables null)
        (define-values (guard-name-w h d a) (send dc get-text-extent guard-name))
        ; computing params first (adding guard-name is easy afterwards)
        ; note that start-x is (INDENT + guard-name-width)
@@ -301,9 +302,16 @@
                                 (guard-args tline)
                                 (+ INDENT guard-name-w)
                                 current-h "(" ")"))
+       (set! hoverables (append gp-hoverable-positions hoverables))
+
+       (define guard-name-db (display-bound INDENT current-h guard-name-w h))
        (define positions-with-guard-name
-         (hash-set all-positions "guard-name" (display-bound INDENT current-h
-                                                             guard-name-w h)))
+         (hash-set all-positions "guard-name" guard-name-db))
+       (define rectangles-with-guard-name
+         (cons-hash-table guard-name guard-name-db hilite-rectangle-positions))
+
+       (set! hoverables (cons (vector guard-name INDENT (+ INDENT guard-name-w)) hoverables))
+
        (define has-a-bridge? (guard-bridge? tline))
        (define-values (hoverables-with-show-bridge show-bridge-position rectangles-with-show-bridge current-x-after-show-bridge)
          (if has-a-bridge?
@@ -314,7 +322,7 @@
                                      current-h sb-w sb_)]
                      [sb-hover-genstr (symbol->string (gensym 'show-bridge-hover))])
                  (values (cons (vector sb-hover-genstr (+ current-x-after-param TGAP) (+ current-x-after-param TGAP sb-w))
-                               gp-hoverable-positions)
+                               hoverables)
                          sb-position
                          (append-hash-table
                           (hash-set params-rectangle-positions
@@ -323,12 +331,14 @@
                                     ;; (underlined) at any moment
                                     sb-hover-genstr
                                     sb-position)
-                          hilite-rectangle-positions)
+                          rectangles-with-guard-name)
                          (+ current-x-after-param TGAP sb-w))))
-             (values gp-hoverable-positions
+             (values hoverables
                      #f
-                     (append-hash-table params-rectangle-positions hilite-rectangle-positions)
+                     (append-hash-table params-rectangle-positions rectangles-with-guard-name)
                      current-x-after-param)))
+
+       (set! hoverables hoverables-with-show-bridge)
 
        (define positions-with-show-bridge
          (if has-a-bridge?
@@ -356,7 +366,7 @@
              (values positions-with-show-bridge
                      current-x-after-show-bridge)))
 
-       (values (hash-set hoverable-positions tline hoverables-with-show-bridge)
+       (values (hash-set hoverable-positions tline hoverables)
                rectangles-with-show-bridge
                (hash-set tline-positions tline positions-with-run-text)
                (max max-w current-x-after-run-times TGAP)
@@ -501,7 +511,7 @@
               (+ (display-bound-w db) TGAP)
               (display-bound-h db)))))
 
-(define (render-hilites dc hilite-param pinned-param hilite-rectangle-positions [hilite-guards? #f])
+(define (render-hilites dc hilite-param pinned-param hilite-rectangle-positions [hilite-all-guards? #f])
   ;; hilite-param
   (when hilite-param
     (let ([rectangle-positions (hash-ref hilite-rectangle-positions hilite-param)])
@@ -512,8 +522,10 @@
       (render-hilite dc rectangle-positions)))
 
   ;; extra
-  (when hilite-guards?
-    (printf "hilite-rectangle-position keys : ~a\n" (hash-keys hilite-rectangle-positions)))
+  (when hilite-all-guards?
+    (for ([(hilitable-name rectangle-positions) (in-hash hilite-rectangle-positions)])
+      (when (string-contains? hilitable-name "guard")
+        (render-hilite dc rectangle-positions)))
 
   )
 
