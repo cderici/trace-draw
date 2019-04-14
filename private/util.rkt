@@ -11,13 +11,13 @@
     (let ([current-bounds (hash-ref return-hash s #f)])
       (if current-bounds
           (hash-set return-hash
-                    s (cons d current-bounds))
+                    s (if (list? current-bounds) (cons d current-bounds) (list d current-bounds)))
           (hash-set return-hash
                     s (list d))))))
 
 ;; ht -> (hash "string" (listof display-bound))
 (define (cons-hash-table key value ht)
-  (let ([ls (hash-ref ht key #f)])
-    (if ls
-        (hash-set ht key (cons value ls))
+  (let ([current-val (hash-ref ht key #f)])
+    (if current-val
+        (hash-set ht key (if (list? current-val) (cons value current-val) (list value current-val)))
         (hash-set ht key (list value)))))

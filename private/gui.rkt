@@ -256,7 +256,7 @@
                                 t-b))))
                      (when (send e leaving?)
                        (set! hover-trace #f)
-                       (reset-hilites))
+                       (reset-hilites-lhs))
                      ;; setting a pinned-trace
                      (when (and hover-trace
                                 (send e button-down?)
@@ -269,7 +269,7 @@
                        (set! tline-offscreen #f)
                        (set! refresh-tline-canvas? #t)
                        (send trace-info-canvas refresh)
-                       (reset-hilites)
+                       (reset-hilites-lhs)
                        (update-message-bar))
                      ;; unsetting a pinned-trace
                      (when (and (not hover-trace)
@@ -283,8 +283,8 @@
                        (low-priority-refresh))
                      (unless (equal? hover hover-trace)
                        (set! hover hover-trace)
-                       (reset-hilites)))
-                   (define/public (reset-hilites)
+                       (reset-hilites-lhs)))
+                   (define/public (reset-hilites-lhs)
                      (define hover-trace hover)
                      (set! hilites null)
                      (when hover-trace
@@ -383,7 +383,7 @@
 
                                        (set! refresh-offscreen? #t)
                                        (send c refresh)
-                                       (send c reset-hilites)
+                                       (send c reset-hilites-lhs)
                                        (update-message-bar)
                                        (set! hilite-param #f)
                                        (set! pinned-param #f)
@@ -420,6 +420,9 @@
   (define current-hoverable-positions #f) ;; (hash tline (listof (cons number number)))
   (define current-hilite-rectangle-positions #f) ;; (hash "str" (listof display-bounds))
   (define current-tline-positions #f) ;; (hash tline <everything needed to draw the tline>)
+  (define current-tline-h #f)
+  #;(define current-tline-#-of-lines #f)
+  (define refresh-tline-canvas-hilites? #t)
 
   (define refresh-tline-canvas? #t)
   (define tline-offscreen #f)
@@ -460,7 +463,7 @@
                                       (send e get-other-altgr-key-code))])
                (and trace-h
                     (case key-code
-                      [(A a) (begin (printf "hele\n") (scroll 0 1))]
+                      [(A a) (scroll 0 1)]
                       [(wheel-up up) (adjust-scroll 0 (- scroll-speed)) #t]
                       [(wheel-down down) (adjust-scroll 0 scroll-speed) #t]
                       [(wheel-left left) (adjust-scroll (- scroll-speed) 0) #t]
@@ -477,88 +480,110 @@
                       [codes (if no-debug-tlines?
                                  (filter (lambda (c) (not (debug-merge-point? c))) codes*)
                                  codes*)]
-                      [line-#-ref (quotient (+ mouse-y dy) TLINE-H)]
-                      [current-tline (and (>= line-#-ref 0)
-                                          (< line-#-ref (length codes))
-                                          (list-ref codes line-#-ref))])
-                   (set! hover-tline current-tline)
-                   (unless current-tline
-                     (set! hover-param-trace #f)
-                     (send c reset-hilites))
+                      [line-# (->int (quotient (+ mouse-y dy) (quotient current-tline-h (length codes))))]
+                      [current-tline (and (>= line-# 0)
+                                          (< line-# (length codes))
+                                          (list-ref codes line-#))])
+                 (set! hover-tline current-tline)
+                 ;; unset the hover-param-trace if we're not hovering
+                 ;; any tline (recall that hovering on a trace label
+                 ;; on the rhs should hilite the trace on the lhs)
+                 (unless current-tline
+                   (set! hover-param-trace #f)
+                   (send c reset-hilites-lhs))
 
-                   (when hover-tline
-                     (let ([bounds (tline-hbounds current-tline)])
-                       (define-values (prev-hilite-param prev-pinned-param)
-                         (values hilite-param pinned-param))
-                       (if bounds
-                           (let ([hover-param
-                                  (for/or ([(p p-bounds) (in-hash bounds)])
-                                    (let ([p-x-left (- (car p-bounds) dx)]
-                                          [p-x-right (- (cdr p-bounds) dx)])
-                                      (and (mouse-x . >= . p-x-left)
-                                           (mouse-x . <= . p-x-right)
-                                           p)))])
-                             (when (send e leaving?)
-                               (set! hover-tline #f))
-                             ;; switch traces
-                             (when (and hover-param
-                                        (send e button-down?)
-                                        (string-contains? hover-param "show bridge"))
-                               (for ([b (in-list bridges)])
-                                 (when (equal? (guard-id current-tline)
-                                               (bridge-guard-id b))
-                                   (context-switch-to b))))
+                 (when hover-tline
+                   (let ()
+                     ;; record the previous hilites
+                     (define-values (prev-hilite-param prev-pinned-param)
+                       (values hilite-param pinned-param))
+                     (let ([hoverable-positions (hash-ref current-hoverable-positions hover-tline #f)])
+                       ;; does the currently hovered tline has any hoverables?
+                       (if hoverable-positions
+                         (let ([hover-param ;; what are we hovering over?
+                                (for/or ([hoverable (in-list hoverable-positions)])
+                                  (let ([p-x-left (vector-ref hoverable 1)]
+                                        [p-x-right (vector-ref hoverable 2)])
+                                    (and (mouse-x . >= . p-x-left)
+                                         (mouse-x . <= . p-x-right)
+                                         (vector-ref hoverable 0))))])
+                           ;; unset the hover-tline if the mouse is
+                           ;; leaving
+                           (when (send e leaving?)
+                             (set! hover-tline #f))
 
-                             ;; switch traces again (jump)
-                             (when (and hover-param
-                                        (string-contains? hover-param "TargetToken"))
-                               (define target-label* (get-target hover-param))
-                               (define target-label (or (hash-ref inner-loop-of target-label* #f) target-label*))
-                               (set! hover-param-trace target-label)
-                               (send c reset-hilites)
-                               (when (send e button-down?)
-                                 (for ([t (in-list traces)])
-                                   (when (equal? (trace-label t) target-label)
-                                     (context-switch-to (or (hash-ref inner-loop-of t #f) t)))))
-                               )
+                           ;; context-switch to bridge
+                           (when (and (guard? hover-tline)
+                                      hover-param
+                                      (send e button-down?)
+                                      (equal? hover-param "show-bridge-hover"))
+                             (for ([b (in-list bridges)])
+                               (when (equal? (guard-id hover-tline)
+                                             (bridge-guard-id b))
+                                 (context-switch-to b))))
 
-                             ;; unset the hover-param-trace
-                             (when (and hover-param-trace
-                                        (or (not hover-param)
-                                            (and hover-param-trace
-                                                 (not (string-contains? hover-param "TargetToken")))))
-                               (set! hover-param-trace #f)
-                               (send c reset-hilites))
-
-                             ;; reset the pinned-param
-                             (when (and hover-param
-                                        (is-param? hover-param)
-                                        (send e button-down?)
-                                        (not (equal? pinned-param hover-param)))
-                               (set! pinned-param hover-param))
-                             ;; un-set the pinned-param
-                             (when (and (not hover-param)
-                                        (send e button-down?))
-                               (set! pinned-param #f))
-                             ;; reset the hilite-param
-                             (when (or (not hover-param) (is-param? hover-param))
-                               (set! hilite-param hover-param)))
-                           (begin
-                             ;; unset all
-                             (when hover-param-trace
-                               (set! hover-param-trace #f)
-                               (send c reset-hilites))
-
-                             (set! hilite-param #f)
+                           ;; context-switch on jump operation ;; FIXME: add "call" operations to this
+                           (when (and (is-jump? hover-tline)
+                                      hover-param
+                                      (string-contains? hover-param "TargetToken"))
+                             (define target-label* (get-target hover-param))
+                             (define target-label (or (hash-ref inner-loop-of target-label* #f) target-label*))
+                             (set! hover-param-trace target-label)
+                             (send c reset-hilites-lhs)
                              (when (send e button-down?)
-                               (set! pinned-param #f))))
+                               (for ([t (in-list traces)])
+                                 (when (equal? (trace-label t) target-label)
+                                   (context-switch-to (or (hash-ref inner-loop-of t #f) t))))))
+
+                           ;; un-hilite the hilited trace on the lhs
+                           (when (and hover-param-trace
+                                      (or (not hover-param)
+                                          (and hover-param-trace
+                                               (not (string-contains? hover-param "TargetToken")))))
+                             (set! hover-param-trace #f)
+                             (send c reset-hilites-lhs))
+
+                           ;; reset the pinned-param
+                           (when (and hover-param
+                                      (is-param? hover-param)
+                                      (send e button-down?)
+                                      (not (equal? pinned-param hover-param)))
+                             (set! pinned-param hover-param))
+
+                           ;; or un-set the pinned-param if we clicked
+                           ;; somewhere else
+                           (when (and (not hover-param)
+                                      (send e button-down?))
+                             (set! pinned-param #f))
+
+                           ;; reset the hilite-param (recall:
+                           ;; "pinned-param" is different than
+                           ;; "hilite-param")
+                           (when (or (not hover-param) (is-param? hover-param))
+                             (set! hilite-param hover-param)))
+
+                         ;; if the currently hovered tline doesn't
+                         ;; have any hoverable positions
+                         (begin
+                           ;; un-hilite the trace on the lhs
+                           (when hover-param-trace
+                             (set! hover-param-trace #f)
+                             (send c reset-hilites-lhs))
+
+                           (set! hilite-param #f)
+                           (when (send e button-down?)
+                             (set! pinned-param #f))))
+
+                       ;; if either hilite-param or pinned-param has
+                       ;; changed then refresh the hilites on the
+                       ;; tline canvas
                        (unless (and (equal? hilite-param prev-hilite-param)
                                     (equal? pinned-param prev-pinned-param))
-                         (set! refresh-tline-canvas? #t)
-                         (refresh)))
-                     (set! refresh-tline-canvas? #t)))))
+                         (set! refresh-tline-canvas-hilites? #t)
+                         #;(set! refresh-tline-canvas? #t)
+                         (refresh))))
 
-           )
+                   (set! refresh-tline-canvas? #t))))))
          [parent tpanel]
          [min-width (/ total-w 2)]
          [style '(hscroll vscroll deleted)]
@@ -583,6 +608,8 @@
                     (set! current-hoverable-positions hoverable-positions)
                     (set! current-hilite-rectangle-positions hilite-rectangle-positions)
                     (set! current-tline-positions tline-positions)
+                    (set! current-tline-h current-h)
+                    #;(set! current-tline-#-of-lines (length codes))
 
                     (set! trace-w max-w)
                     (set! trace-h current-h)
@@ -592,12 +619,20 @@
                                                 (->int (* view-scale current-h))))
                     (set! tline-offscreen-dc (send tline-offscreen make-dc)))))
 
-              (set! refresh-tline-canvas? #f)
-
               (define dc tline-offscreen-dc)
               (send dc clear)
               (send dc set-smoothing 'smoothed)
-              (draw-tlines2 dc))
+              (draw-tlines2 dc)
+
+              (when (and refresh-tline-canvas-hilites?
+                         current-hilite-rectangle-positions
+                         hilite-param)
+                (render-hilites dc hilite-param pinned-param current-hilite-rectangle-positions)
+                (set! refresh-tline-canvas-hilites? #f))
+
+              (set! refresh-tline-canvas? #f)
+
+              )
 
 
             #;(when refresh-tline-canvas?
@@ -710,7 +745,7 @@ Trace file                                :      ~a
 
     (send right-h-panel refresh)
     (set! pinned-trace t)
-    (send c reset-hilites)
+    (send c reset-hilites-lhs)
     (update-message-bar)
     (set! tline-offscreen #f)
     (set! refresh-tline-canvas? #t)

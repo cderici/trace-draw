@@ -10,7 +10,8 @@
 
 (provide draw-all render-tline
          compute-tline-positions-and-dimensions
-         render-tlines)
+         render-tlines
+         render-hilites)
 
 (define (connect dc source-bounds self? is-target-inner? target-bounds
                  [right-to-left? #f][hilite? #f])
@@ -251,7 +252,7 @@
           (let-values ([(hoverable-positions all-positions hilite-rectangle-positions final-x param-h _)
                         (for/fold ([hoverable-positions null]
                                    [all-positions (hash "y" y l-paren x)]
-                                   [hilitable-param-positions (hash)]
+                                   [param-rectangle-positions (hash)]
                                    [current-x (+ x (+ l-paren-w paren-gap))]
                                    [param-h 0]
                                    [p-count 1])
@@ -260,7 +261,7 @@
                           (values
                            (cons (vector p current-x (+ current-x w)) hoverable-positions)
                            (hash-set all-positions p (display-bound current-x y w h))
-                           (hash-set hilitable-param-positions p (display-bound current-x y w h))
+                           (hash-set param-rectangle-positions p (display-bound current-x y w h))
                            (if (< p-count number-of-params) (+ current-x w comma-ws) (+ current-x w paren-gap)) ; the next x is (current-x + param-width + ", ")
                            h
                            (add1 p-count)))])
@@ -334,7 +335,7 @@
        (define-values (guard-name-w h d a) (send dc get-text-extent guard-name))
        ; computing params first (adding guard-name is easy afterwards)
        ; note that start-x is (INDENT + guard-name-width)
-       (define-values (gp-hoverable-positions all-positions hilite-rectangle-positions current-x-after-param)
+       (define-values (gp-hoverable-positions all-positions params-rectangle-positions current-x-after-param)
          (compute/render-params dc
                                 (guard-args tline)
                                 (+ INDENT guard-name-w)
@@ -343,23 +344,28 @@
          (hash-set all-positions "guard-name" (display-bound INDENT current-h
                                                              guard-name-w h)))
        (define has-a-bridge? (guard-bridge? tline))
-       (define-values (show-bridge-position rectangles-with-show-bridge current-x-after-show-bridge)
+       (define-values (hoverables-with-show-bridge show-bridge-position rectangles-with-show-bridge current-x-after-show-bridge)
          (if has-a-bridge?
              (let-values ([(sb-w sb_ sb__ sb___)
                            (send dc get-text-extent "show bridge")])
                (let ([sb-position
                       (display-bound (+ current-x-after-param TGAP)
                                      current-h sb-w sb_)])
-                 (values sb-position
-                         (hash-set hilite-rectangle-positions
-                                   ;; there's always only one
-                                   ;; show-bridge highlighted
-                                   ;; (underlined) at any moment
-                                   "show-bridge"
-                                   sb-position)
+                 (values (cons (vector "show-bridge-hover" (+ current-x-after-param TGAP) (+ current-x-after-param TGAP sb-w))
+                               gp-hoverable-positions)
+                         sb-position
+                         (append-hash-table
+                          (hash-set params-rectangle-positions
+                                    ;; there's always only one
+                                    ;; show-bridge highlighted
+                                    ;; (underlined) at any moment
+                                    "show-bridge-hover"
+                                    sb-position)
+                          hilite-rectangle-positions)
                          (+ current-x-after-param TGAP sb-w))))
-             (values #f
-                     (append-hash-table hilite-rectangle-positions hilite-rectangle-positions)
+             (values gp-hoverable-positions
+                     #f
+                     (append-hash-table params-rectangle-positions hilite-rectangle-positions)
                      current-x-after-param)))
 
        (define positions-with-show-bridge
@@ -388,7 +394,7 @@
              (values positions-with-show-bridge
                      current-x-after-show-bridge)))
 
-       (values (hash-set hoverable-positions tline gp-hoverable-positions)
+       (values (hash-set hoverable-positions tline hoverables-with-show-bridge)
                rectangles-with-show-bridge
                (hash-set tline-positions tline positions-with-run-text)
                (max max-w current-x-after-run-times TGAP)
@@ -512,6 +518,24 @@
              (compute/render-params dc args 'dummy 'dummy "(" ")" line-info color)))]
         [else
          (error 'render-tlines (format "this is not a tline : ~a\n" tline))]))))
+
+(define (render-hilite dc rectangle-positions)
+  (send dc set-brush tline-highlight-brush)
+  (for ([db (in-list rectangle-positions)])
+    (send dc draw-rounded-rectangle
+          (- (display-bound-x db) GAP)
+          (display-bound-y db)
+          (+ (display-bound-w db) TGAP)
+          (display-bound-h db))))
+
+(define (render-hilites dc hilite-param pinned-param hilite-rectangle-positions)
+  ;; hilite-param
+  (let ([rectangle-positions (hash-ref hilite-rectangle-positions hilite-param)])
+    (render-hilite dc rectangle-positions))
+  ;; pinned-param
+  (when pinned-param
+    (let ([rectangle-positions (hash-ref hilite-rectangle-positions pinned-param)])
+      (render-hilite dc rectangle-positions))))
 
 (define (render-tline dc tline tline-# hover-tline hilite-param pinned-param lbl->counts)
   (send dc set-font t-font)
