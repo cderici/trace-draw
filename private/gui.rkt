@@ -601,11 +601,6 @@
                                  (trace-code pinned-trace)
                                  (bridge-code pinned-trace))])
                   (when pinned-trace
-                    (unless (or recompute-tline-positions
-                              (not (hash-ref position-cache pinned-trace #f))
-                              (xor no-debug-tlines?
-                                   (hash-ref (hash-ref position-cache pinned-trace) 'cached-no-debug-status)))
-                      (printf "using cache...\n"))
                     (when (or recompute-tline-positions
                               (not (hash-ref position-cache pinned-trace #f))
                               (xor no-debug-tlines?
@@ -617,7 +612,6 @@
                                     max-w
                                     current-h)
                         (compute-tline-positions-and-dimensions t-dc codes no-debug-tlines? labeled-counts))
-                      (printf "recomputing ...\n")
                       (set! recompute-tline-positions #f)
                       (hash-set! position-cache
                                  pinned-trace
@@ -634,6 +628,11 @@
 
                     (set! trace-w (hash-ref cached-positions 'tline-max-width))
                     (set! trace-h (hash-ref cached-positions 'tline-canvas-height))
+
+                    (send trace-info-canvas init-auto-scrollbars
+                          (->int trace-w)
+                          (->int trace-h)
+                          0 0)
 
                     (set! tline-offscreen (send trace-info-canvas make-bitmap
                                                 (->int (* view-scale trace-w))
