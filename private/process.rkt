@@ -118,7 +118,7 @@
          [jump-params
           (string-split (substring jump-params* 1 (sub1 (string-length jump-params*))) ", ")]
          [bridge? (hash-has-key? bridge-candidates id)])
-    (make-guard id guard-line-str type args jump-params bridge? #f belongs-lbl)))
+    (make-guard id guard-line-str type args jump-params bridge? belongs-lbl)))
 
 (define (get-jump-info jump-line-str)
   (get-label-id jump-line-str))
@@ -245,7 +245,7 @@
         [(char=? (string-ref line-str 0) #\[)
          (let ([params (string-split
                         (substring line-str 1 (sub1 (string-length line-str))) ", ")])
-           (make-param-tline params #f))]
+           (make-param-tline params))]
         ;; debug-merge-point
         [(string-contains? line-str "debug_merge_point")
          (make-debug-merge-point (car (string-split (cadr (string-split line-str ", '")) "')")))]
@@ -261,12 +261,12 @@
                      [op (let ([o (regexp-match* #px"[\\w]+" line-str)]) (and o (list-ref o 2)))]
                      [args (let ([a (regexp-match #px"\\(.*\\)" line-str)])
                              (and a (string-split (substring (car a) 1 (sub1 (string-length (car a)))) ", ")))])
-                 (make-assignment-tline lhs op args #f))
+                 (make-assignment-tline lhs op args))
                (let* ([splt (string-split line-str " = ")]
                       [lhs (car splt)]
                       [op (cadr splt)]
                       [args null])
-                 (make-assignment-tline lhs op args #f))))]
+                 (make-assignment-tline lhs op args))))]
         ;; operation-t-line
         [(regexp-match #px"[\\w]+\\(.*\\)" line-str)
          => (lambda (ln) (and ln
@@ -280,7 +280,7 @@
                                            (for/list ([ar (in-list args)])
                                              (if (string-contains? ar "descr=TargetToken")
                                                  (substring ar 6) ar)))])
-                                  (make-operation-tline op clean-args #f)))))]
+                                  (make-operation-tline op clean-args)))))]
         [else (error 'trace-line
                      (format "couldn't recognize this line :\n~a\n" line-str))]))
 
