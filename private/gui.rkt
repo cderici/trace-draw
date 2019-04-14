@@ -421,7 +421,6 @@
   (define current-hilite-rectangle-positions #f) ;; (hash "str" (listof display-bounds))
   (define current-tline-positions #f) ;; (hash tline <everything needed to draw the tline>)
   (define current-tline-h #f)
-  #;(define current-tline-#-of-lines #f)
   (define refresh-tline-canvas-hilites? #t)
 
   (define refresh-tline-canvas? #t)
@@ -609,47 +608,28 @@
                     (set! current-hilite-rectangle-positions hilite-rectangle-positions)
                     (set! current-tline-positions tline-positions)
                     (set! current-tline-h current-h)
-                    #;(set! current-tline-#-of-lines (length codes))
 
                     (set! trace-w max-w)
                     (set! trace-h current-h)
-                    #;(printf "computed -- max-w : ~a -- current-h : ~a\n" max-w current-h)
+
                     (set! tline-offscreen (send trace-info-canvas make-bitmap
                                                 (->int (* view-scale max-w))
                                                 (->int (* view-scale current-h))))
                     (set! tline-offscreen-dc (send tline-offscreen make-dc)))))
 
+              (set! refresh-tline-canvas? #f)
               (define dc tline-offscreen-dc)
               (send dc clear)
               (send dc set-smoothing 'smoothed)
-              (draw-tlines2 dc)
-
-              (when (and refresh-tline-canvas-hilites?
-                         current-hilite-rectangle-positions
-                         hilite-param)
-                (render-hilites dc hilite-param pinned-param current-hilite-rectangle-positions)
-                (set! refresh-tline-canvas-hilites? #f))
-
-              (set! refresh-tline-canvas? #f)
-
-              )
+              (draw-tlines2 dc))
 
 
-            #;(when refresh-tline-canvas?
-              (unless tline-offscreen
-                (draw-tlines t-dc)
-                (define-values (w h) (send t-dc get-size))
-                #;(printf "drawn -- w : ~a -- h : ~a\n" w h)
-                (set! tline-offscreen (send trace-info-canvas make-bitmap
-                                            (->int (* view-scale w))
-                                            (->int (* view-scale (+ h (* 3 TLINE-H))))))
-                (set! tline-offscreen-dc (send tline-offscreen make-dc)))
-              (set! refresh-tline-canvas? #f)
+            (when (and refresh-tline-canvas-hilites?
+                       current-hilite-rectangle-positions
+                       (or hilite-param pinned-param))
+              (render-hilites tline-offscreen-dc hilite-param pinned-param current-hilite-rectangle-positions)
+              (set! refresh-tline-canvas-hilites? #f))
 
-              (define dc tline-offscreen-dc)
-              (send dc clear)
-              (send dc set-smoothing 'smoothed)
-              (draw-tlines dc))
             (send t-dc draw-bitmap tline-offscreen 0 0))]))
 
   (define (draw-tlines2 dc)

@@ -530,8 +530,9 @@
 
 (define (render-hilites dc hilite-param pinned-param hilite-rectangle-positions)
   ;; hilite-param
-  (let ([rectangle-positions (hash-ref hilite-rectangle-positions hilite-param)])
-    (render-hilite dc rectangle-positions))
+  (when hilite-param
+    (let ([rectangle-positions (hash-ref hilite-rectangle-positions hilite-param)])
+      (render-hilite dc rectangle-positions)))
   ;; pinned-param
   (when pinned-param
     (let ([rectangle-positions (hash-ref hilite-rectangle-positions pinned-param)])
