@@ -491,15 +491,20 @@
                [args (assignment-tline-args tline)])
            (let ([lhs-db (hash-ref line-info "lhs")]
                  [op-db (hash-ref line-info "op")])
+             (define color (if (string-contains? op "call_") "blue" tline-color))
              (send dc draw-text (string-append lhs " = ") (display-bound-x lhs-db) (display-bound-y lhs-db) #t)
+             (send dc set-text-foreground color)
              (send dc draw-text op (display-bound-x op-db) (display-bound-y op-db) #t)
-             (compute/render-params dc args 'dummy 'dummy "(" ")" line-info)))]
+             (compute/render-params dc args 'dummy 'dummy "(" ")" line-info color)))]
         [(operation-tline? tline)
          (let ([op (operation-tline-op tline)]
                [args (operation-tline-args tline)])
            (unless (and no-frame-tlines? (is-frame-tline? tline))
              (let ([op-db (hash-ref line-info "op")]
-                   [color (if (or (equal? op "jump") (equal? op "label")) "blue" tline-color)])
+                   [color (cond
+                            [(or (equal? op "jump") (equal? op "label")) "blue"]
+                            [(equal? op "finish") "darkgreen"]
+                            [else tline-color])])
                (send dc set-text-foreground color)
                (send dc draw-text op (display-bound-x op-db) (display-bound-y op-db) #t)
                (compute/render-params dc args 'dummy 'dummy "(" ")" line-info color))))]
