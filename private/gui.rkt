@@ -621,7 +621,7 @@
               (define dc tline-offscreen-dc)
               (send dc clear)
               (send dc set-smoothing 'smoothed)
-              (draw-tlines2 dc))
+              (draw-tlines dc))
 
 
             (when (and refresh-tline-canvas-hilites?
@@ -632,42 +632,13 @@
 
             (send t-dc draw-bitmap tline-offscreen 0 0))]))
 
-  (define (draw-tlines2 dc)
+  (define (draw-tlines dc)
     (when pinned-trace
       (let ([codes (if (trace? pinned-trace)
                        (trace-code pinned-trace)
                        (bridge-code pinned-trace))])
         (render-tlines dc codes current-tline-positions no-debug-tlines?)
         (unless (eq? pinned-trace prev-pinned-trace)
-          (send trace-info-canvas init-auto-scrollbars
-                (->int trace-w)
-                (->int trace-h)
-                0 0)
-          (set! prev-pinned-trace pinned-trace)))))
-
-
-  (define (draw-tlines dc)
-    (when pinned-trace
-      (let ([codes (if (trace? pinned-trace)
-                       (trace-code pinned-trace)
-                       (bridge-code pinned-trace))]
-            [jump-target (if (trace? pinned-trace)
-                             (trace-jump-target pinned-trace)
-                             (bridge-jump-target pinned-trace))])
-
-        (define filtered-codes (if no-debug-tlines? (filter (lambda (c) (not (debug-merge-point? c))) codes) codes))
-        (define-values (final-tline-# max-width)
-          (for/fold ([tline-# 0][max-w 0])
-                    ([tline (in-list filtered-codes)])
-            (define new-w
-              (render-tline dc tline tline-#
-                            hover-tline hilite-param pinned-param labeled-counts))
-            (values (add1 tline-#) (max max-w new-w))))
-
-
-        (unless (eq? pinned-trace prev-pinned-trace)
-          (set! trace-w max-width)
-          (set! trace-h (* (+ final-tline-# GAP) TLINE-H))
           (send trace-info-canvas init-auto-scrollbars
                 (->int trace-w)
                 (->int trace-h)
