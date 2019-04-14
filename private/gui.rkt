@@ -5,6 +5,7 @@
          racket/string
          racket/format
          racket/path
+         racket/bool
          "draw.rkt"
          "struct.rkt"
          "config.rkt"
@@ -99,6 +100,7 @@
                      (set! no-debug-tlines? (send cb get-value))
                      (set! tline-offscreen #f)
                      (set! refresh-tline-canvas? #t)
+                     (set! recompute-tline-positions #t)
                      (send trace-info-canvas refresh))]))
 
   (define refresh-offscreen? #t)
@@ -416,11 +418,13 @@
                                      (send tpanel delete-child infobox)
                                      (send tpanel add-child trace-info-canvas))))]))
 
+  (define position-cache (make-hash))
+  (define recompute-tline-positions #f)
+
   ;; FIXME : cache these with trace-labels
   (define current-hoverable-positions #f) ;; (hash tline (listof (cons number number)))
   (define current-hilite-rectangle-positions #f) ;; (hash "str" (listof display-bounds))
   (define current-tline-positions #f) ;; (hash tline <everything needed to draw the tline>)
-  (define current-tline-h #f)
   (define refresh-tline-canvas-hilites? #t)
 
   (define refresh-tline-canvas? #t)
@@ -479,7 +483,7 @@
                       [codes (if no-debug-tlines?
                                  (filter (lambda (c) (not (debug-merge-point? c))) codes*)
                                  codes*)]
-                      [line-# (->int (quotient (+ mouse-y dy) (quotient current-tline-h (length codes))))]
+                      [line-# (->int (quotient (+ mouse-y dy) (quotient trace-h (length codes))))]
                       [current-tline (and (>= line-# 0)
                                           (< line-# (length codes))
                                           (list-ref codes line-#))])
@@ -597,24 +601,43 @@
                                  (trace-code pinned-trace)
                                  (bridge-code pinned-trace))])
                   (when pinned-trace
-                    (send t-dc set-font t-font) ; to match the rendering font
-                    (define-values (hoverable-positions
+                    (unless (or recompute-tline-positions
+                              (not (hash-ref position-cache pinned-trace #f))
+                              (xor no-debug-tlines?
+                                   (hash-ref (hash-ref position-cache pinned-trace) 'cached-no-debug-status)))
+                      (printf "using cache...\n"))
+                    (when (or recompute-tline-positions
+                              (not (hash-ref position-cache pinned-trace #f))
+                              (xor no-debug-tlines?
+                                   (hash-ref (hash-ref position-cache pinned-trace) 'cached-no-debug-status)))
+                      (send t-dc set-font t-font) ; to match the rendering font
+                      (define-values (hoverable-positions
                                     hilite-rectangle-positions
                                     tline-positions
                                     max-w
                                     current-h)
-                      (compute-tline-positions-and-dimensions t-dc codes no-debug-tlines? labeled-counts))
-                    (set! current-hoverable-positions hoverable-positions)
-                    (set! current-hilite-rectangle-positions hilite-rectangle-positions)
-                    (set! current-tline-positions tline-positions)
-                    (set! current-tline-h current-h)
+                        (compute-tline-positions-and-dimensions t-dc codes no-debug-tlines? labeled-counts))
+                      (printf "recomputing ...\n")
+                      (set! recompute-tline-positions #f)
+                      (hash-set! position-cache
+                                 pinned-trace
+                                 (hash 'hoverable-positions hoverable-positions
+                                       'rectangle-positions hilite-rectangle-positions
+                                       'tline-positions tline-positions
+                                       'tline-canvas-height current-h
+                                       'tline-max-width max-w
+                                       'cached-no-debug-status no-debug-tlines?)))
+                    (define cached-positions (hash-ref position-cache pinned-trace))
+                    (set! current-hoverable-positions (hash-ref cached-positions 'hoverable-positions))
+                    (set! current-hilite-rectangle-positions (hash-ref cached-positions 'rectangle-positions))
+                    (set! current-tline-positions (hash-ref cached-positions 'tline-positions))
 
-                    (set! trace-w max-w)
-                    (set! trace-h current-h)
+                    (set! trace-w (hash-ref cached-positions 'tline-max-width))
+                    (set! trace-h (hash-ref cached-positions 'tline-canvas-height))
 
                     (set! tline-offscreen (send trace-info-canvas make-bitmap
-                                                (->int (* view-scale max-w))
-                                                (->int (* view-scale current-h))))
+                                                (->int (* view-scale trace-w))
+                                                (->int (* view-scale trace-h))))
                     (set! tline-offscreen-dc (send tline-offscreen make-dc)))))
 
               (set! refresh-tline-canvas? #f)
