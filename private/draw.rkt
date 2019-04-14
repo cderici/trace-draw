@@ -311,8 +311,9 @@
                            (send dc get-text-extent "show bridge")])
                (let ([sb-position
                       (display-bound (+ current-x-after-param TGAP)
-                                     current-h sb-w sb_)])
-                 (values (cons (vector "show-bridge-hover" (+ current-x-after-param TGAP) (+ current-x-after-param TGAP sb-w))
+                                     current-h sb-w sb_)]
+                     [sb-hover-genstr (symbol->string (gensym 'show-bridge-hover))])
+                 (values (cons (vector sb-hover-genstr (+ current-x-after-param TGAP) (+ current-x-after-param TGAP sb-w))
                                gp-hoverable-positions)
                          sb-position
                          (append-hash-table
@@ -320,7 +321,7 @@
                                     ;; there's always only one
                                     ;; show-bridge highlighted
                                     ;; (underlined) at any moment
-                                    "show-bridge-hover"
+                                    sb-hover-genstr
                                     sb-position)
                           hilite-rectangle-positions)
                          (+ current-x-after-param TGAP sb-w))))
@@ -480,24 +481,41 @@
         [else
          (error 'render-tlines (format "this is not a tline : ~a\n" tline))]))))
 
-(define (render-hilite dc rectangle-positions)
+(define (render-hilite dc rectangle-positions [is-show-bridge? #f])
   (send dc set-brush tline-highlight-brush)
-  (for ([db (in-list rectangle-positions)])
-    (send dc draw-rounded-rectangle
-          (- (display-bound-x db) GAP)
-          (display-bound-y db)
-          (+ (display-bound-w db) TGAP)
-          (display-bound-h db))))
 
-(define (render-hilites dc hilite-param pinned-param hilite-rectangle-positions)
+  (if is-show-bridge?
+      (let ([db (car rectangle-positions)])
+        ; there's only one rectangle (see guard? case of
+        ; compute-tline-positions-and-dimensions)
+        (send dc set-brush tline-showbridge-brush)
+        (send dc draw-rounded-rectangle
+              (- (display-bound-x db) GAP)
+              (+ (display-bound-y db) (display-bound-h db))
+              (+ (display-bound-w db) TGAP)
+              ( / GAP 2)))
+      (for ([db (in-list rectangle-positions)])
+        (send dc draw-rounded-rectangle
+              (- (display-bound-x db) GAP)
+              (display-bound-y db)
+              (+ (display-bound-w db) TGAP)
+              (display-bound-h db)))))
+
+(define (render-hilites dc hilite-param pinned-param hilite-rectangle-positions [hilite-guards? #f])
   ;; hilite-param
   (when hilite-param
     (let ([rectangle-positions (hash-ref hilite-rectangle-positions hilite-param)])
-      (render-hilite dc rectangle-positions)))
+      (render-hilite dc rectangle-positions (string-contains? hilite-param "show-bridge"))))
   ;; pinned-param
   (when pinned-param
     (let ([rectangle-positions (hash-ref hilite-rectangle-positions pinned-param)])
-      (render-hilite dc rectangle-positions))))
+      (render-hilite dc rectangle-positions)))
+
+  ;; extra
+  (when hilite-guards?
+    (printf "hilite-rectangle-position keys : ~a\n" (hash-keys hilite-rectangle-positions)))
+
+  )
 
 
 ;;;; MAIN DRAW

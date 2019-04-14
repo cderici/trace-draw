@@ -515,15 +515,18 @@
                            (when (send e leaving?)
                              (set! hover-tline #f))
 
-                           ;; context-switch to bridge
+                           ;; hover & context-switch to bridge
                            (when (and (guard? hover-tline)
                                       hover-param
-                                      (send e button-down?)
-                                      (equal? hover-param "show-bridge-hover"))
+                                      (string-contains? hover-param "show-bridge-hover"))
                              (for ([b (in-list bridges)])
-                               (when (equal? (guard-id hover-tline)
-                                             (bridge-guard-id b))
-                                 (context-switch-to b))))
+                               (when (equal? (guard-id hover-tline) (bridge-guard-id b))
+                                 #;(set! hover b) ;; FIXME: revisit this
+                                 (send c reset-hilites-lhs)
+                                 (when (send e button-down?)
+                                   (set! hover-param #f)
+                                   (set! pinned-param #f)
+                                   (context-switch-to b)))))
 
                            ;; context-switch on jump operation ;; FIXME: add "call" operations to this
                            (when (and (is-jump? hover-tline)
@@ -536,6 +539,8 @@
                              (when (send e button-down?)
                                (for ([t (in-list traces)])
                                  (when (equal? (trace-label t) target-label)
+                                   (set! hover-param #f)
+                                   (set! pinned-param #f)
                                    (context-switch-to (or (hash-ref inner-loop-of t #f) t))))))
 
                            ;; un-hilite the hilited trace on the lhs
@@ -649,7 +654,7 @@
             (when (and refresh-tline-canvas-hilites?
                        current-hilite-rectangle-positions
                        (or hilite-param pinned-param))
-              (render-hilites tline-offscreen-dc hilite-param pinned-param current-hilite-rectangle-positions)
+              (render-hilites tline-offscreen-dc hilite-param pinned-param current-hilite-rectangle-positions hilite-guards?)
               (set! refresh-tline-canvas-hilites? #f))
 
             (send t-dc draw-bitmap tline-offscreen 0 0))]))

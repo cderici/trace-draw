@@ -68,6 +68,8 @@
 
 (define tline-highlight-brush
   (make-brush #:color (make-color 100 255 255 0.3) #:style 'solid))
+(define tline-showbridge-brush
+  (make-brush #:color "blue" #:style 'solid))
 
 (define bridgebox-brush
   (make-brush #:color (make-color 0 100 100 0.3) #:style 'solid))
