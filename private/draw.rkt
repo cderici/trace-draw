@@ -525,9 +525,7 @@
   (when hilite-all-guards?
     (for ([(hilitable-name rectangle-positions) (in-hash hilite-rectangle-positions)])
       (when (string-contains? hilitable-name "guard")
-        (render-hilite dc rectangle-positions)))
-
-  )
+        (render-hilite dc rectangle-positions)))))
 
 
 ;;;; MAIN DRAW
