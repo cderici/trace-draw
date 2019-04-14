@@ -232,7 +232,7 @@
                     hilite-rectangle-positions
                     (+ final-x r-paren-w))))))
 
-(define (compute-tline-positions-and-dimensions dc tlines hide-debug-merge-points? lbl->counts)
+(define (compute-tline-positions-and-dimensions dc tlines hide-debug-merge-points? hide-frame-lines? lbl->counts)
   ;; hoverable-positions : will be used to detect what the mouse is hovering over
   ;; hilite-rectangle-positions : will be used to draw the hilite rectangles for hilited name
   ;; tline-positions : will be used to draw the tlines
@@ -416,40 +416,47 @@
                  (+ current-h lhs-h LINE-GAP)
                  optimized-loop-h))]
       [(operation-tline? tline)
-       (let* ([op (operation-tline-op tline)]
-              [args (operation-tline-args tline)])
+       (if (and hide-frame-lines? (is-frame-tline? tline))
+           (values hoverable-positions
+                   hilite-rectangle-positions
+                   tline-positions
+                   max-w current-h optimized-loop-h)
+           (let* ([op (operation-tline-op tline)]
+                  [args (operation-tline-args tline)])
 
-         (define-values (op-w op-h op__ op___) (send dc get-text-extent op))
-         (define current-x-after-op (+ INDENT op-w))
-         (define op-display-bound
-           (display-bound INDENT current-h op-w op-h))
+             (define-values (op-w op-h op__ op___) (send dc get-text-extent op))
+             (define current-x-after-op (+ INDENT op-w))
+             (define op-display-bound
+               (display-bound INDENT current-h op-w op-h))
 
-         (define hoverables-with-op
-           (list (vector op INDENT current-x-after-op)))
-         (define rectangles-with-op ;; let's make the ops highligted too
-           (cons-hash-table op op-display-bound hilite-rectangle-positions))
+             (define hoverables-with-op
+               (list (vector op INDENT current-x-after-op)))
+             (define rectangles-with-op ;; let's make the ops highligted too
+               (cons-hash-table op op-display-bound hilite-rectangle-positions))
 
-         (define-values (op-hoverable-params param-positions param-rectangles current-x-after-params)
-           (compute/render-params dc args current-x-after-op current-h "(" ")"))
+             (define-values (op-hoverable-params param-positions param-rectangles current-x-after-params)
+               (compute/render-params dc args current-x-after-op current-h "(" ")"))
 
-         (values (hash-set hoverable-positions tline
-                           (append hoverables-with-op op-hoverable-params))
-                 (append-hash-table param-rectangles rectangles-with-op)
-                 (hash-set tline-positions tline
-                           (hash-set param-positions "op" op-display-bound))
-                 (max max-w current-x-after-params)
-                 (+ current-h op-h LINE-GAP)
-                 (if (string=? op "label") current-h optimized-loop-h)))]
+             (values (hash-set hoverable-positions tline
+                               (append hoverables-with-op op-hoverable-params))
+                     (append-hash-table param-rectangles rectangles-with-op)
+                     (hash-set tline-positions tline
+                               (hash-set param-positions "op" op-display-bound))
+                     (max max-w current-x-after-params)
+                     (+ current-h op-h LINE-GAP)
+                     (if (string=? op "label") current-h optimized-loop-h))))]
       [else
        (error 'compute-tline-positions-and-dimensions (format "this is not a tline : ~a\n" tline))])))
 
-(define (render-tlines dc tlines tline-positions no-debug-tlines?)
+(define (render-tlines dc tlines tline-positions no-debug-tlines? no-frame-tlines?)
   (send dc set-font t-font)
   (for ([tline (in-list tlines)])
     (send dc set-text-foreground tline-color)
     (let ([line-info (hash-ref tline-positions tline #f)])
-      (when (and (not (debug-merge-point? tline)) (not line-info))
-        (error 'render-tlines "no pre-computed information for : ~a" tline))
+      (when (and (not line-info)
+                 (and (not (and no-frame-tlines? (is-frame-tline? tline)))
+                      (not (and no-debug-tlines? (debug-merge-point? tline)))))
+        (error 'render-tlines "no pre-computed information for : ~a -- : ~a -- ~a" tline no-frame-tlines? (is-frame-tline? tline)))
       (cond
         [(info-tline? tline)
          (let ([str (info-tline-line-str tline)]
@@ -490,11 +497,12 @@
         [(operation-tline? tline)
          (let ([op (operation-tline-op tline)]
                [args (operation-tline-args tline)])
-           (let ([op-db (hash-ref line-info "op")]
-                 [color (if (or (equal? op "jump") (equal? op "label")) "blue" tline-color)])
-             (send dc set-text-foreground color)
-             (send dc draw-text op (display-bound-x op-db) (display-bound-y op-db) #t)
-             (compute/render-params dc args 'dummy 'dummy "(" ")" line-info color)))]
+           (unless (and no-frame-tlines? (is-frame-tline? tline))
+             (let ([op-db (hash-ref line-info "op")]
+                   [color (if (or (equal? op "jump") (equal? op "label")) "blue" tline-color)])
+               (send dc set-text-foreground color)
+               (send dc draw-text op (display-bound-x op-db) (display-bound-y op-db) #t)
+               (compute/render-params dc args 'dummy 'dummy "(" ")" line-info color))))]
         [else
          (error 'render-tlines (format "this is not a tline : ~a\n" tline))]))))
 

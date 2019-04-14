@@ -102,6 +102,17 @@
                      (set! refresh-tline-canvas-hilites? #t)
                      (send trace-info-canvas refresh))]))
 
+  (define no-frame-tlines-check
+    (new check-box%
+         [label "Hide Frame Enter/Leave"]
+         [parent below-controls]
+         [callback (lambda (cb ce)
+                     (set! no-frame-tlines? (send cb get-value))
+                     (set! tline-offscreen #f)
+                     (set! refresh-tline-canvas? #t)
+                     (set! recompute-tline-positions #t)
+                     (send trace-info-canvas refresh))]))
+
   (define no-debug-tlines-check
     (new check-box%
          [label "Hide Interpreted Codes"]
@@ -483,6 +494,7 @@
   (define hover-param-trace #f) ;; a tracebox to look like a hover because of a tline param
 
   (define no-debug-tlines? #f)
+  (define no-frame-tlines? #f)
   (define hilite-all-guards? #f)
 
   (define trace-info-canvas
@@ -526,9 +538,11 @@
                (let* ([codes* (if (trace? pinned-trace)
                                   (trace-code pinned-trace)
                                   (bridge-code pinned-trace))]
-                      [codes (if no-debug-tlines?
-                                 (filter (lambda (c) (not (debug-merge-point? c))) codes*)
-                                 codes*)]
+                      [codes (filter (lambda (c)
+                                       (and (not (and no-debug-tlines?
+                                                      (debug-merge-point? c)))
+                                            (not (and no-frame-tlines?
+                                                      (is-frame-tline? c))))) codes*)]
                       [line-# (->int (quotient (+ mouse-y dy) (quotient trace-h (length codes))))]
                       [current-tline (and (>= line-# 0)
                                           (< line-# (length codes))
@@ -657,7 +671,9 @@
                     (when (or recompute-tline-positions
                               (not (hash-ref position-cache pinned-trace #f))
                               (xor no-debug-tlines?
-                                   (hash-ref (hash-ref position-cache pinned-trace) 'cached-no-debug-status)))
+                                   (hash-ref (hash-ref position-cache pinned-trace) 'cached-no-debug-status))
+                              (xor no-frame-tlines?
+                                   (hash-ref (hash-ref position-cache pinned-trace) 'cached-no-frame-status)))
                       (send t-dc set-font t-font) ; to match the rendering font
                       (define-values (hoverable-positions
                                     hilite-rectangle-positions
@@ -665,7 +681,7 @@
                                     max-w
                                     current-h
                                     optimized-loop-h)
-                        (compute-tline-positions-and-dimensions t-dc codes no-debug-tlines? labeled-counts))
+                        (compute-tline-positions-and-dimensions t-dc codes no-debug-tlines? no-frame-tlines? labeled-counts))
                       (set! recompute-tline-positions #f)
                       (hash-set! position-cache
                                  pinned-trace
@@ -675,12 +691,16 @@
                                        'tline-canvas-height current-h
                                        'tline-max-width max-w
                                        'cached-no-debug-status no-debug-tlines?
+                                       'cached-no-frame-status no-frame-tlines?
                                        'optimized-loop-y-position optimized-loop-h)))
                     (define cached-positions (hash-ref position-cache pinned-trace))
                     (set! current-hoverable-positions (hash-ref cached-positions 'hoverable-positions))
                     (set! current-hilite-rectangle-positions (hash-ref cached-positions 'rectangle-positions))
                     (set! current-tline-positions (hash-ref cached-positions 'tline-positions))
                     (set! current-optimized-loop-y-position (hash-ref cached-positions 'optimized-loop-y-position))
+
+                    (set! no-debug-tlines? (hash-ref cached-positions 'cached-no-debug-status))
+                    (set! no-frame-tlines? (hash-ref cached-positions 'cached-no-frame-status))
 
                     (set! trace-w (hash-ref cached-positions 'tline-max-width))
                     (set! trace-h (hash-ref cached-positions 'tline-canvas-height))
@@ -714,7 +734,7 @@
       (let ([codes (if (trace? pinned-trace)
                        (trace-code pinned-trace)
                        (bridge-code pinned-trace))])
-        (render-tlines dc codes current-tline-positions no-debug-tlines?)
+        (render-tlines dc codes current-tline-positions no-debug-tlines? no-frame-tlines?)
         (unless (eq? pinned-trace prev-pinned-trace)
           (send trace-info-canvas init-auto-scrollbars
                 (->int trace-w)

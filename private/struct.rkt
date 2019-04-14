@@ -63,6 +63,11 @@
   (and (operation-tline? tline)
        (equal? (operation-tline-op tline) "jump")))
 
+(define (is-frame-tline? tline)
+  (and (operation-tline? tline)
+       (or (equal? (operation-tline-op tline) "enter_portal_frame")
+           (equal? (operation-tline-op tline) "leave_portal_frame"))))
+
 (define (get-target param)
   (if (string-contains? param "TargetToken")
       (substring param 12 (sub1 (string-length param)))
