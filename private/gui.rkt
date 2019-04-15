@@ -457,7 +457,7 @@
                                  current-optimized-loop-y-position))
                          (let ()
                            (send b set-label "Jump to Optimized Loop")
-                           (send trace-info-canvas adjust-scroll 0 0))))]))
+                           (send trace-info-canvas adjust-scroll 0 -1000))))]))
 
 
 
@@ -594,10 +594,11 @@
                                       (string-contains? hover-param "show-bridge-hover"))
                              (for ([b (in-list bridges)])
                                (when (equal? (guard-id hover-tline) (bridge-guard-id b))
-                                 #;(set! hover b) ;; FIXME: revisit this
+                                 (set! hover b) ;; FIXME: revisit this
                                  (send c reset-hilites-lhs)
                                  (when (send e button-down?)
                                    (set! hover-param #f)
+                                   (set! hover #f)
                                    (when (memv in-trace-jump-button (send right-h-panel get-children))
                                      (send right-h-panel delete-child in-trace-jump-button))
                                    (set! pinned-param #f)
@@ -623,6 +624,7 @@
                                       (or (not hover-param)
                                           (and hover-param-trace
                                                (not (string-contains? hover-param "TargetToken")))))
+                             (set! hover #f)
                              (set! hover-param-trace #f)
                              (send c reset-hilites-lhs))
 
@@ -649,8 +651,9 @@
                          ;; have any hoverable positions
                          (begin
                            ;; un-hilite the trace on the lhs
-                           (when hover-param-trace
+                           (when (or hover hover-param-trace)
                              (set! hover-param-trace #f)
+                             (set! hover #f)
                              (send c reset-hilites-lhs))
 
                            (set! hilite-param #f)
