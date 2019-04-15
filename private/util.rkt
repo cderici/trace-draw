@@ -4,6 +4,23 @@
 
 (provide (all-defined-out))
 
+;; find the ith element in the list, modulo the elements failing the
+;; filter-func
+(define (list-ref-filter ls i filter-func)
+  (for/fold ([c 0]
+             [last #f]
+             #:result (if (not (> c i)) (error 'list-ref-filer "index ~a too large for ~a" i ls) last))
+            ([e (in-list ls)]
+             #:when (filter-func e))
+    #:break (> c i)
+    (values (add1 c) e)))
+
+(define (length-filter ls filter-func)
+  (for/fold ([l 0])
+            ([e (in-list ls)]
+             #:when (filter-func e))
+    (add1 l)))
+
 (define (is-param? p)
   (not (or (string->number p) (equal? p "show bridge"))))
 

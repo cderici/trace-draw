@@ -543,23 +543,32 @@
                       [(wheel-left left) (adjust-scroll (- scroll-speed) 0) #t]
                       [(wheel-right right) (adjust-scroll scroll-speed 0) #t]
                       [else #f]))))
+           (define (filter-func no-debug-tlines? no-frame-tlines?)
+             (lambda (c)
+               (and (not (and no-debug-tlines?
+                              (debug-merge-point? c)))
+                    (not (and no-frame-tlines?
+                              (is-frame-tline? c))))))
            (define/override (on-event e)
              (define-values (dx dy) (get-view-start))
              (define mouse-x (send e get-x))
              (define mouse-y (send e get-y))
              (when pinned-trace
-               (let* ([codes* (if (trace? pinned-trace)
+               (let* ([codes (if (trace? pinned-trace)
                                   (trace-code pinned-trace)
                                   (bridge-code pinned-trace))]
-                      [codes (filter (lambda (c)
-                                       (and (not (and no-debug-tlines?
-                                                      (debug-merge-point? c)))
-                                            (not (and no-frame-tlines?
-                                                      (is-frame-tline? c))))) codes*)]
-                      [line-# (->int (quotient (+ mouse-y dy) (quotient trace-h (length codes))))]
+                      [avg-line-height (quotient trace-h
+                                                 (length-filter
+                                                  codes
+                                                  (filter-func no-debug-tlines? no-frame-tlines?)))]
+                      [line-# (->int (quotient (+ mouse-y dy) avg-line-height))]
                       [current-tline (and (>= line-# 0)
-                                          (< line-# (length codes))
-                                          (list-ref codes line-#))])
+                                          (< line-# (length-filter
+                                                     codes
+                                                     (filter-func no-debug-tlines? no-frame-tlines?)))
+                                          (list-ref-filter
+                                           codes line-#
+                                           (filter-func no-debug-tlines? no-frame-tlines?)))])
                  (set! hover-tline current-tline)
                  ;; unset the hover-param-trace if we're not hovering
                  ;; any tline (recall that hovering on a trace label
