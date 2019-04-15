@@ -537,12 +537,18 @@
 (define (render-hilites dc hilite-param pinned-param hilite-rectangle-positions [hilite-all-guards? #f] [hilite-allocations? #f])
   ;; hilite-param
   (when hilite-param
-    (let ([rectangle-positions (hash-ref hilite-rectangle-positions hilite-param)])
-      (render-hilite dc rectangle-positions (string-contains? hilite-param "show-bridge"))))
+    (let ([rectangle-positions (hash-ref hilite-rectangle-positions hilite-param #f)])
+      (unless rectangle-positions
+        (eprintf "WARNING : couldn't find the positions for hilite-param : ~a" hilite-param))
+      (when rectangle-positions
+        (render-hilite dc rectangle-positions (string-contains? hilite-param "show-bridge")))))
   ;; pinned-param
   (when pinned-param
-    (let ([rectangle-positions (hash-ref hilite-rectangle-positions pinned-param)])
-      (render-hilite dc rectangle-positions)))
+    (let ([rectangle-positions (hash-ref hilite-rectangle-positions pinned-param #f)])
+      (unless rectangle-positions
+        (eprintf "WARNING : couldn't find the positions for pinned-param : ~a" pinned-param))
+      (when rectangle-positions
+        (render-hilite dc rectangle-positions))))
 
   ;; extra
   (when hilite-all-guards?
