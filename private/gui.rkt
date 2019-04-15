@@ -10,7 +10,8 @@
          "struct.rkt"
          "config.rkt"
          "jump-deps.rkt"
-         "process.rkt")
+         "process.rkt"
+         "util.rkt")
 
 (provide make-gui)
 (define (->int n) (ceiling (inexact->exact n)))

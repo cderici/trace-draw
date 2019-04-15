@@ -3,7 +3,8 @@
 (require racket/string
          racket/list
          "struct.rkt"
-         "config.rkt")
+         "config.rkt"
+         "util.rkt")
 
 (provide pick-most-used-traces
          pick-bridges-for
