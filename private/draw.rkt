@@ -491,7 +491,10 @@
                [args (assignment-tline-args tline)])
            (let ([lhs-db (hash-ref line-info "lhs")]
                  [op-db (hash-ref line-info "op")])
-             (define color (if (string-contains? op "call_") "blue" tline-color))
+             (define color (cond
+                             [(equal? op "call_i") "darkgreen"]
+                             [(string-contains? op "call_assembler") "blue"]
+                             [else tline-color]))
              (send dc draw-text (string-append lhs " = ") (display-bound-x lhs-db) (display-bound-y lhs-db) #t)
              (send dc set-text-foreground color)
              (send dc draw-text op (display-bound-x op-db) (display-bound-y op-db) #t)
@@ -531,7 +534,7 @@
               (+ (display-bound-w db) TGAP)
               (display-bound-h db)))))
 
-(define (render-hilites dc hilite-param pinned-param hilite-rectangle-positions [hilite-all-guards? #f])
+(define (render-hilites dc hilite-param pinned-param hilite-rectangle-positions [hilite-all-guards? #f] [hilite-allocations? #f])
   ;; hilite-param
   (when hilite-param
     (let ([rectangle-positions (hash-ref hilite-rectangle-positions hilite-param)])
@@ -545,6 +548,11 @@
   (when hilite-all-guards?
     (for ([(hilitable-name rectangle-positions) (in-hash hilite-rectangle-positions)])
       (when (string-contains? hilitable-name "guard")
+        (render-hilite dc rectangle-positions))))
+
+  (when hilite-allocations?
+    (for ([(hilitable-name rectangle-positions) (in-hash hilite-rectangle-positions)])
+      (when (equal? hilitable-name "new_with_vtable")
         (render-hilite dc rectangle-positions)))))
 
 

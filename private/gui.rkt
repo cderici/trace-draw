@@ -93,6 +93,16 @@
          [parent below-panel]
          [alignment '(right center)]))
 
+  (define show-allocations-check
+    (new check-box%
+         [label "Show Allocations"]
+         [parent below-controls]
+         [callback (lambda (cb ce)
+                     (set! hilite-all-allocations? (send cb get-value))
+                     (set! refresh-tline-canvas? #t)
+                     (set! refresh-tline-canvas-hilites? #t)
+                     (send trace-info-canvas refresh))]))
+
   (define show-guards-check
     (new check-box%
          [label "Show Guards"]
@@ -497,6 +507,7 @@
   (define no-debug-tlines? #f)
   (define no-frame-tlines? #f)
   (define hilite-all-guards? #f)
+  (define hilite-all-allocations? #f)
 
   (define trace-info-canvas
     (new (class canvas%
@@ -515,7 +526,8 @@
              (define sy (min 1 (max 0 (+ (* dy 1/40) (/ y adj-h)))))
              (define tx (and (not (= x (* sx adj-w))) sx))
              (define ty (and (not (= y (* sy adj-h))) sy))
-             (when (or tx ty) (scroll tx ty)))
+             (when (or tx ty) (scroll tx ty))
+             (set! refresh-tline-canvas-hilites? #t))
            (define/public (scroll-to x y)
              #;(define-values (w h) (get-client-size))
              (scroll (/ x trace-w) (/ y trace-h)))
@@ -724,8 +736,8 @@
 
             (when (and refresh-tline-canvas-hilites?
                        current-hilite-rectangle-positions
-                       (or hilite-all-guards? hilite-param pinned-param))
-              (render-hilites tline-offscreen-dc hilite-param pinned-param current-hilite-rectangle-positions hilite-all-guards?)
+                       (or hilite-all-guards? hilite-all-allocations? hilite-param pinned-param))
+              (render-hilites tline-offscreen-dc hilite-param pinned-param current-hilite-rectangle-positions hilite-all-guards? hilite-all-allocations?)
               (set! refresh-tline-canvas-hilites? #f))
 
             (send t-dc draw-bitmap tline-offscreen 0 0))]))
