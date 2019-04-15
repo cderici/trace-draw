@@ -83,7 +83,7 @@
          [stretchable-height #f]
          [alignment '(center center)]))
 
-  (define below-message
+  (define bottom-message
     (new message%
          [parent below-panel]
          [label ""]))
@@ -182,9 +182,7 @@
   ;; same hash table with keys as labels instead of objects
   (define labeled-bounds-ht
     (for/hash ([(t-b b) (in-hash display-bounds-ht)])
-      (if (trace? t-b)
-          (values (trace-label t-b) b)
-          (values (bridge-guard-id t-b) b))))
+      (values (get-label t-b) b)))
 
   ;; trace-jumps : mapping from traces/bridges to trace labels
   ;; guard-exits : mapping from traces to (listof bridge-guard-ids)
@@ -312,7 +310,8 @@
                                   (memv in-trace-jump-button (send right-h-panel get-children)))
                          (send right-h-panel delete-child in-trace-jump-button))
                        (reset-hilites-lhs)
-                       (update-message-bar))
+                       (update-top-message-bar)
+                       (update-bottom-message-bar (format "Looking at : ~a" (get-label pinned-trace))))
                      ;; unsetting a pinned-trace
                      (when (and (not hover-trace)
                                 (send e button-down?))
@@ -323,7 +322,8 @@
                        (when (memv in-trace-jump-button (send right-h-panel get-children))
                                      (send right-h-panel delete-child in-trace-jump-button))
                        (set! refresh-offscreen? #t)
-                       (update-message-bar)
+                       (update-top-message-bar)
+                       (update-bottom-message-bar "")
                        (low-priority-refresh))
                      (unless (equal? hover hover-trace)
                        (set! hover hover-trace)
@@ -402,7 +402,7 @@
   (define left-h-panel (new horizontal-panel%
                             [parent hpanel]
                             [alignment '(left center)]))
-  (define main-message
+  (define top-message-bar
     (new message%
          [parent left-h-panel]
          [font main-msg-font]
@@ -421,8 +421,10 @@
          [style '(deleted)]
          [stretchable-width #t]
          [callback (lambda (b ce)
+                     ;; FIXME : Use context-switch here
                      (set! pinned-trace (car history-pinned-trace))
-                     (when (trace? pinned-trace)
+                     (when (and (trace? pinned-trace)
+                                (not (memv in-trace-jump-button (send right-h-panel get-children))))
                        (send right-h-panel add-child in-trace-jump-button))
                      (set! history-pinned-trace
                            (or (and (null? history-pinned-trace) null)
@@ -431,7 +433,8 @@
                      (set! refresh-offscreen? #t)
                      (send c refresh)
                      (send c reset-hilites-lhs)
-                     (update-message-bar)
+                     (update-top-message-bar)
+                     (update-bottom-message-bar (format "Swtiched back to : ~a" (get-label pinned-trace)))
                      (set! hilite-param #f)
                      (set! pinned-param #f)
                      (set! hover-tline #f)
@@ -450,13 +453,17 @@
          [style '(deleted)]
          [stretchable-width #t]
          [callback (lambda (b ce)
+                     (unless current-optimized-loop-y-position
+                       (update-bottom-message-bar "No optimized loop inside"))
                      (if (equal? (send b get-label) "Jump to Optimized Loop")
                          (when current-optimized-loop-y-position
                            (send b set-label "Jump to Preamble")
+                           (update-bottom-message-bar "Jumped to the optimized loop")
                            (send trace-info-canvas adjust-scroll 0
                                  current-optimized-loop-y-position))
                          (let ()
                            (send b set-label "Jump to Optimized Loop")
+                           (update-bottom-message-bar "Jumped to the preamble loop")
                            (send trace-info-canvas adjust-scroll 0 -1000))))]))
 
 
@@ -791,7 +798,7 @@ Trace file                                :      ~a
          [init-value infobox-content]
          [style '(multiple hscroll)]))
 
-  (define (update-message-bar)
+  (define (update-top-message-bar)
     (and pinned-trace
          (let* ([is-trace? (trace? pinned-trace)]
                 [inner-loop (and is-trace? (trace-inner-loop pinned-trace))]
@@ -806,7 +813,10 @@ Trace file                                :      ~a
                      (if inner-loop
                          (format "Run ~a / ~a times" cnt cnt-inner)
                          (format "Run ~a times" cnt)))])
-           (send main-message set-label msg))))
+           (send top-message-bar set-label msg))))
+
+  (define (update-bottom-message-bar msg)
+    (send bottom-message set-label (string-append "    " msg)))
 
   (define (context-switch-to t)
     (when (null? history-pinned-trace)
@@ -819,7 +829,8 @@ Trace file                                :      ~a
     (send right-h-panel refresh)
     (set! pinned-trace t)
     (send c reset-hilites-lhs)
-    (update-message-bar)
+    (update-top-message-bar)
+    (update-bottom-message-bar (format "Swtiched to : ~a" (get-label t)))
     (set! tline-offscreen #f)
     (set! refresh-tline-canvas? #t)
     (send trace-info-canvas refresh))
