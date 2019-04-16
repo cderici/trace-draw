@@ -446,6 +446,11 @@
                      (set! refresh-tline-canvas? #t)
                      (send trace-info-canvas refresh))]))
 
+  (define (jump-to-inner-loop)
+    (send trace-info-canvas adjust-scroll 0
+          current-optimized-loop-y-position)
+    (set! jump-to-inner-loop? #f))
+
   (define in-trace-jump-button
     (new button%
          [parent right-h-panel]
@@ -459,8 +464,7 @@
                          (when current-optimized-loop-y-position
                            (send b set-label "Jump to Preamble")
                            (update-bottom-message-bar "Jumped to the optimized loop")
-                           (send trace-info-canvas adjust-scroll 0
-                                 current-optimized-loop-y-position))
+                           (jump-to-inner-loop))
                          (let ()
                            (send b set-label "Jump to Optimized Loop")
                            (update-bottom-message-bar "Jumped to the preamble loop")
@@ -516,6 +520,8 @@
   (define hilite-all-guards? #f)
   (define hilite-all-allocations? #f)
 
+  (define jump-to-inner-loop? #f)
+
   (define trace-info-canvas
     (new (class canvas%
            (super-new)
@@ -562,8 +568,8 @@
              (define mouse-y (send e get-y))
              (when pinned-trace
                (let* ([codes (if (trace? pinned-trace)
-                                  (trace-code pinned-trace)
-                                  (bridge-code pinned-trace))]
+                                 (trace-code pinned-trace)
+                                 (bridge-code pinned-trace))]
                       [avg-line-height (quotient trace-h
                                                  (length-filter
                                                   codes
@@ -625,7 +631,8 @@
                                       hover-param
                                       (string-contains? hover-param "TargetToken"))
                              (define target-label* (get-target hover-param))
-                             (define target-label (or (hash-ref inner-loop-of target-label* #f) target-label*))
+                             (define inner-loop-label (hash-ref inner-loop-of target-label* #f))
+                             (define target-label (or inner-loop-label target-label*))
                              (set! hover-param-trace target-label)
                              (send c reset-hilites-lhs)
                              (when (send e button-down?)
@@ -633,7 +640,7 @@
                                  (when (equal? (trace-label t) target-label)
                                    (set! hover-param #f)
                                    (set! pinned-param #f)
-                                   (context-switch-to (or (hash-ref inner-loop-of t #f) t))))))
+                                   (context-switch-to t inner-loop-label)))))
 
                            ;; un-hilite the hilited trace on the lhs
                            (when (and hover-param-trace
@@ -725,6 +732,7 @@
                                        'cached-no-debug-status no-debug-tlines?
                                        'cached-no-frame-status no-frame-tlines?
                                        'optimized-loop-y-position optimized-loop-h)))
+
                     (define cached-positions (hash-ref position-cache pinned-trace))
                     (set! current-hoverable-positions (hash-ref cached-positions 'hoverable-positions))
                     (set! current-hilite-rectangle-positions (hash-ref cached-positions 'rectangle-positions))
@@ -758,6 +766,9 @@
                        (or hilite-all-guards? hilite-all-allocations? hilite-param pinned-param))
               (render-hilites tline-offscreen-dc hilite-param pinned-param current-hilite-rectangle-positions hilite-all-guards? hilite-all-allocations?)
               (set! refresh-tline-canvas-hilites? #f))
+
+            (when jump-to-inner-loop?
+              (jump-to-inner-loop))
 
             (send t-dc draw-bitmap tline-offscreen 0 0))]))
 
@@ -818,7 +829,7 @@ Trace file                                :      ~a
   (define (update-bottom-message-bar msg)
     (send bottom-message set-label (string-append "    " msg)))
 
-  (define (context-switch-to t)
+  (define (context-switch-to t [inner-loop? #f])
     (when (null? history-pinned-trace)
       (send right-h-panel add-child back-button))
     (send back-button set-label
@@ -833,7 +844,9 @@ Trace file                                :      ~a
     (update-bottom-message-bar (format "Swtiched to : ~a" (get-label t)))
     (set! tline-offscreen #f)
     (set! refresh-tline-canvas? #t)
-    (send trace-info-canvas refresh))
+    (send trace-info-canvas refresh)
+    (when inner-loop?
+      (set! jump-to-inner-loop? #t)))
 
   (send f center 'both)
   (send f show #t)
