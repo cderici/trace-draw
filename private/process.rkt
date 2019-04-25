@@ -217,13 +217,18 @@
                     "0x" (number->string
                           (string->number (car nums)) 16))]
               [cnt (string->number (cadr nums))])
-         (set! seen-entry #f)
-         (set! seen-token #f)
-         (values blocks
-                 extra-entry-bridges
-                 trace-count
-                 (hash-set count->lbl cnt lbl)
-                 (hash-set lbl->count lbl cnt)))]
+         (let ([new-b (if seen-entry
+                          (if (hash-ref candidates (list seen-entry) #f)
+                              (cons seen-entry extra-entry-bridges)
+                              extra-entry-bridges)
+                          extra-entry-bridges)])
+           (set! seen-entry #f)
+           (set! seen-token #f)
+           (values blocks
+                   new-b
+                   trace-count
+                   (hash-set count->lbl cnt lbl)
+                   (hash-set lbl->count lbl cnt))))]
       [else (values blocks extra-entry-bridges trace-count count->lbl lbl->count)])))
 
 (define (process-trace-internals trace-lines-str bridge-candidates [for-a-bridge? #f])
