@@ -721,6 +721,8 @@
                                     current-h
                                     optimized-loop-h)
                         (compute-tline-positions-and-dimensions t-dc codes no-debug-tlines? no-frame-tlines? labeled-counts))
+                      (set! max-w (min max-w 2000))
+                      ; let's limit the max-w (it gets pretty weird scrolling right forever)
                       (set! recompute-tline-positions #f)
                       (hash-set! position-cache
                                  pinned-trace

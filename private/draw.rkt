@@ -263,7 +263,7 @@
        (values (hash-set hoverable-positions tline param-hilitable-xs)
                (append-hash-table param-rectangle-positions hilite-rectangle-positions)
                (hash-set tline-positions tline all-positions)
-               current-x
+               (max max-w current-x)
                (+ (hash-ref all-positions "current-y") LINE-GAP)
                optimized-loop-h)]
       [(debug-merge-point? tline)
@@ -373,7 +373,7 @@
        (values (hash-set hoverable-positions tline hoverables)
                rectangles-with-show-bridge
                (hash-set tline-positions tline positions-with-run-text)
-               (max max-w current-x-after-run-times TGAP)
+               (max max-w (+ current-x-after-run-times TGAP))
                (+ current-h h LINE-GAP)
                optimized-loop-h)]
       [(assignment-tline? tline)
