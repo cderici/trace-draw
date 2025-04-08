@@ -10,10 +10,17 @@
 
 (provide read-all)
 
+(define (count-lines-in-file path)
+  (call-with-input-file path
+    (lambda (in)
+      (let loop ((count 0))
+        (define line (read-line in 'any))
+        (if (eof-object? line)
+            count
+            (loop (+ count 1)))))))
+
 (define (init-gui trace-file)
-  ;; Gather meta information (e.g. # of lines in the file)
-  (define wc-output (with-output-to-string (lambda () (system (format "wc -l ~a" trace-file)))))
-  (define number-of-lines (string->number (car (string-split (string-trim wc-output) " "))))
+  (define number-of-lines (count-lines-in-file trace-file))
 
   ;; FEEDBACK LOADING GUI
   (eprintf "Starting to work on file : ~a ... \n" trace-file)
